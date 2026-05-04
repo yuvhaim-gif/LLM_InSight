@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Secrets — NEVER commit
+PI.py
+secrets_config.py
+.env
+.env.*
+!.env.example
+
+# Runtime / working files
+ledger.jsonl
+best_best_layer1.json
+iteration_history.json
+console_output.txt
+
+# Backups (large session data)
+backup/
+
+# IDE / tool caches
+.zencoder/
+.zenflow/
+.pytest_cache/
+.vscode/
+AGENTS.md
+*.swp
+*.swo
+*~
+
+# SSL certs
+*.pem
+*.key
+*.crt
+
+# Grader settings (keep default only)
+graderdata/*
+!graderdata/default.jsonl
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store

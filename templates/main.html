@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM🔍InSights</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' font-size='90' dominant-baseline='middle' text-anchor='middle'>🎩</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+</head>
+<body>
+
+<!-- System Selector (Top Left Corner) -->
+<div class="system-selector-container">
+    <span class="system-selector-label">System running (not viewing):</span>
+    <select class="system-selector-dropdown" id="systemTypeSelect" onchange="setSystemType(this.value)">
+        <option value="simple">Simple Laptop</option>
+        <option value="medium">Good Laptop / Desktop</option>
+        <option value="powerful">super laptop/Good Desktop</option>
+    </select>
+</div>
+
+<!-- Deeper Analysis Modal -->
+<div id="deeperAnalysisModal" class="deeper-analysis-modal">
+    <div class="deeper-analysis-content">
+        <div class="deeper-analysis-header">
+            <h2>Deeper Analysis</h2>
+            <button class="deeper-analysis-close" onclick="closeDeeperAnalysisModal()">×</button>
+        </div>
+        <div class="deeper-analysis-body" id="deeperAnalysisBody">
+            <p>Loading analysis data...</p>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Top Right Section: Logout & User Info -->
+    <div style="position: absolute; top: 20px; right: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 1000;">
+        <a href="{{url_for('api.logout')}}" class="logout-button" title="Log out of the application">Logout</a>
+        <div style="color: rgba(255, 255, 255, 0.95); font-weight: 600; font-size: 0.75rem;">Logged in as: <strong>{{user}}</strong></div>
+    </div>
+
+    <!-- Grading Weights (Top Left Corner) -->
+    <div class="weight-controls-top-left">
+        <div class="weight-header-compact">
+            <h4 style="display: flex; align-items: center; gap: 4px; margin: 0; font-size: 0.85rem; color: white;">⚖️ Weights<span class="info-icon" data-tooltip="Control how much each criterion affects the final grade">i</span></h4>
+            <span id="manualIndicatorTop" style="font-size: 0.7rem; color: #ff6b00; font-weight: 700; display: none; margin-left: 5px;">✎ Manual</span>
+            <div class="weight-buttons-compact">
+                <button type="button" class="weight-btn-compact apply" onclick="applyWeights()" title="Apply weights">Apply</button>
+                <button type="button" class="weight-btn-compact reset" onclick="resetWeights()" title="Reset to defaults">Reset</button>
+            </div>
+            <div id="weightStatus" class="weight-status-compact"></div>
+            <span id="weightSumIndicator" style="font-size: 0.75rem; font-weight: 700; margin-left: auto; color: #2ecc71;">100%</span>
+        </div>
+        <div id="weightInputsCompact" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 5px; max-width: 715px;">
+            {% for category, weight in current_weights.items() %}
+            <div class="weight-item-compact">
+                <span class="weight-label-compact">{{category}}</span>
+                <input type="number" class="weight-input" 
+                       data-category="{{category}}" 
+                       data-weight-input="{{category}}"
+                       value="{{(weight * 100)|round|int}}" 
+                       min="0" max="100" step="1"
+                       onchange="checkManualWeightChanges()"
+                       oninput="updateWeightSumIndicator()"
+                       onkeypress="return event.key !== 'Enter'">
+                <span style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">%</span>
+            </div>
+            {% endfor %}
+        </div>
+        <div style="margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <a href="/config_graders" class="weight-btn-compact apply" style="text-decoration: none; display: inline-block; padding: 4px 10px; font-size: 0.75rem;">⚙️ Config Graders</a>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 1.05rem; color: rgba(255,255,255,0.8); font-weight: 700;">📋 Grader:</span>
+                <select id="graderSettingSelect" style="padding: 4px 11px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; font-size: 1.05rem; font-weight: 700; cursor: pointer;" onchange="applyGraderSetting(this.value)">
+                    {% for s in available_grader_settings %}
+                    <option value="{{s}}" {% if s == grader_setting_name %}selected{% endif %} style="color: #333;">{{s}}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subtitle in top-left -->
+    
+    <!-- Header with LLM🔍InSights Box -->
+    <div class="header">
+        <div style="width: 180px; height: 180px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3); border: 3px solid rgba(255, 255, 255, 0.2); animation: pulse 3s ease-in-out infinite;">
+            <h2 style="font-family: 'Dancing Script', cursive; color: #ffffff; margin: 0; font-size: 2.2rem; font-weight: 700; text-shadow: 0 4px 20px rgba(0,0,0,0.2); letter-spacing: -0.5px;">LLM🔍InSights</h2>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="main-content">
+            <form method="post" id="analysisForm">
+                <div class="controls">
+                    <div style="display: flex; gap: 40px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+                            <label style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #2D004D; display: flex; align-items: center;">Advise Models by Domain<span class="info-icon" data-tooltip="Filter recommended answering models by use-case domain, does not change models selected">i</span></label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <select id="domainFilterSelector" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; background: white; cursor: pointer;" onchange="filterModelsByDomain(this.value)" title="Advise models by domain">
+                                    <option value="all">All</option>
+                                    <option value="coding">Coding / Dev</option>
+                                    <option value="creative">Creative / Writing</option>
+                                    <option value="science">Science / Reasoning / Knowledge</option>
+                                    <option value="experimental">Experimental / Edge Cases</option>
+                                    <option value="balanced">Balanced / Multi-purpose</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+                            <label style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #2D004D; display: flex; align-items: center;">Domain Selection<span class="info-icon" data-tooltip="Choose grading criteria profile (Balanced, Accuracy, Creativity, Conciseness)">i</span></label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <select id="gradeWeightsSelector" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; background: white; cursor: pointer;" onchange="setGradeWeights(this.value)" title="Select grade weighting profile">
+                                    <option value="balanced">Balanced</option>
+                                    <option value="accuracy">Accuracy-heavy</option>
+                                    <option value="creativity">Creativity-heavy</option>
+                                    <option value="conciseness">Conciseness-heavy</option>
+                                </select>
+                                <span id="manualIndicator" style="font-size: 0.8rem; color: #ff6b00; font-weight: 600; display: none; margin-left: 5px;">✎ Manual</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+                            <label style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #2D004D; display: flex; align-items: center;">Break Target grade<span class="info-icon" data-tooltip="Analysis stops when this score is reached (1-100)">i</span></label>
+                            <label style="margin: 0; display: flex; gap: 10px; align-items: center;">
+                                <span style="font-size: 0.85rem; color: #2D004D;">Stop at (1 to 100):</span>
+                                <input type="text" name="min_grade" value="{{min_grade}}" style="width: 90px;" placeholder="80" title="Stop analysis when this score is reached (1-100)" onkeypress="return event.key !== 'Enter'">
+                            </label>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+                            <label style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #2D004D; display: flex; align-items: center;">Iterations<span class="info-icon" data-tooltip="How many times to run analysis (1-5 loops)">i</span></label>
+                            <label style="margin: 0; display: flex; gap: 10px; align-items: center;">
+                                <span style="font-size: 0.85rem; color: #2D004D;">Max per test (up to 5):</span>
+                                <input type="number" name="max_iterations" value="{{max_iterations}}" min="1" max="5" style="width: 90px; text-align: center;" title="Maximum iterations to run (1-5)" onkeypress="return event.key !== 'Enter'">
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 40px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+                            <label style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #2D004D; display: flex; align-items: center;">Degradation Break<span class="info-icon" data-tooltip="Stop if scores start decreasing instead of improving">i</span></label>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-degradation {% if degradation_break_enabled %}active{% endif %}" id="degBreakYes" onclick="setDegradationBreak(true)" title="Stop if scores start getting worse">✓ Yes</button>
+                                <button type="button" class="btn-degradation {% if not degradation_break_enabled %}active{% endif %}" id="degBreakNo" onclick="setDegradationBreak(false)" title="Always run max iterations">✗ No</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+                            <label style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #2D004D; display: flex; align-items: center;">Change Prompt<span class="info-icon" data-tooltip="improve prompt using selected model/s">i</span></label>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-degradation {% if change_prompt_between_layers1 %}active{% endif %}" id="changePromptYes" onclick="setChangePromptBetweenLayers1(true)" title="Layer2 improves prompt for Layer1B">✓ Yes</button>
+                                <button type="button" class="btn-degradation {% if not change_prompt_between_layers1 %}active{% endif %}" id="changePromptNo" onclick="setChangePromptBetweenLayers1(false)" title="Layer1B uses original prompt only">✗ No</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+                            <label style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #2D004D; display: flex; align-items: center;">Give Ideas<span class="info-icon" data-tooltip="Generate ideas using selected model">i</span></label>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-degradation {% if give_ideas_enabled %}active{% endif %}" id="giveIdeasYes" onclick="setGiveIdeas(true)" title="Layer0 generates alternative answers">✓ Yes</button>
+                                <button type="button" class="btn-degradation {% if not give_ideas_enabled %}active{% endif %}" id="giveIdeasNo" onclick="setGiveIdeas(false)" title="Skip Layer0 - no alternative answers">✗ No</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+                            <label style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #2D004D; display: flex; align-items: center;">last best answer retantion<span class="info-icon" data-tooltip="Pass previous iteration best answer as context to Layer1A and Layer1B">i</span></label>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-degradation {% if layer1_last_best_context_enabled %}active{% endif %}" id="layer1LastBestContextYes" onclick="setLayer1LastBestContext(true)" title="Enable last-best context for Layer1A and Layer1B">✓ Yes</button>
+                                <button type="button" class="btn-degradation {% if not layer1_last_best_context_enabled %}active{% endif %}" id="layer1LastBestContextNo" onclick="setLayer1LastBestContext(false)" title="Disable last-best context for Layer1A and Layer1B">✗ No</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+                            <label style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #2D004D; display: flex; align-items: center;">grade vs current/first prompt<span class="info-icon" data-tooltip="Choose whether Layer3 graders compare answers to the first original prompt or the current original prompt">i</span></label>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-degradation {% if grade_vs_prompt_mode == 'first' %}active{% endif %}" id="gradePromptFirst" onclick="setGradeVsPromptMode('first')" title="Use the first original prompt in chat for all Layer3 grading">First</button>
+                                <button type="button" class="btn-degradation {% if grade_vs_prompt_mode != 'first' %}active{% endif %}" id="gradePromptCurrent" onclick="setGradeVsPromptMode('current')" title="Use the current original prompt in chat for all Layer3 grading">Current</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary" onclick="localStorage.removeItem('selectedDomainFilter'); document.getElementById('clear-form').submit()" title="Clear all analysis history" style="display: flex; align-items: center; gap: 6px;">Clear Chat<span class="info-icon" data-tooltip="Delete all analysis history for this session">i</span></button>
+                        <button type="button" class="btn btn-secondary" id="uploadJsonBtn" onclick="triggerJsonUpload()" title="Upload a previous chat JSON file manually" style="display: flex; align-items: center; gap: 6px;">Upload Chat<span class="info-icon" data-tooltip="Upload a previous chat JSON file manually">i</span></button>
+                        <button type="submit" class="btn btn-analysis-start" id="analyzeBtn" title="Run analysis on the prompt" style="display: flex; align-items: center; gap: 6px;">START ANALYSIS<span class="info-icon" data-tooltip="Run the 4-layer AI analysis on your prompt">i</span></button>
+                        <button type="button" class="btn" style="background: linear-gradient(90deg, #3d3d5c 0%, #4a3f6b 50%, #3d3d5c 100%); color: white; box-shadow: 0 4px 16px rgba(124, 58, 237, 0.35); display: flex; align-items: center; gap: 6px; transition: all 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);" onmouseover=\"this.style.boxShadow='0 6px 22px rgba(124, 58, 237, 0.45)'; this.style.transform='translateY(-2px)';\" onmouseout=\"this.style.boxShadow='0 4px 16px rgba(124, 58, 237, 0.35)'; this.style.transform='translateY(0)';\" onclick="showDownloadOptions()" title="Download console output">Download Chat<span class="info-icon" data-tooltip="Save analysis results as text or JSON">i</span></button>
+                        <button type="button" class="btn" style="background: linear-gradient(90deg, #3d3d5c 0%, #4a3f6b 50%, #3d3d5c 100%); color: white; box-shadow: 0 4px 16px rgba(124, 58, 237, 0.35); display: flex; align-items: center; gap: 6px; transition: all 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);" onmouseover=\"this.style.boxShadow='0 6px 22px rgba(124, 58, 237, 0.45)'; this.style.transform='translateY(-2px)';\" onmouseout=\"this.style.boxShadow='0 4px 16px rgba(124, 58, 237, 0.35)'; this.style.transform='translateY(0)';\" onclick="saveSelectionsAndNavigate('/review_chats')" title="Review downloaded chat files">📁 Review History<span class="info-icon" data-tooltip="Browse and load your downloaded chat files">i</span></button>
+                        <input type="file" id="jsonFileInput" style="display: none;" accept=".json" onchange="handleJsonUpload(event)">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="prompt">Enter Your Prompt</label>
+                    <small style="display: block; margin-bottom: 10px; color: #666; font-size: 0.85rem;">Provide clear, detailed instructions in English. Be specific about what you want analyzed or improved.</small>
+                    <textarea id="prompt" name="prompt" placeholder="Enter your prompt here..." title="Write your prompt in English for analysis">{{prompt}}</textarea>
+                </div>
+            </form>
+
+            <form id="clear-form" method="post" action="{{ url_for('api.clear_chat') }}" style="display:none">
+            </form>
+
+            <!-- Show ALL best-best answers in reverse order (newest first) -->
+            {% if all_prompt_results %}
+                <div style="margin-bottom: 30px; padding: 15px; background: #f0f4ff; border-radius: 10px; border-left: 4px solid #667eea;">
+                    <h4 style="color: #667eea; margin-bottom: 15px;">Best-Best Answers (Latest First)</h4>
+                    {% set results_list = all_prompt_results|reverse|list %}
+                    {% if results_list %}
+                        {% set last_result = results_list[0] %}
+                        <div style="margin-bottom: 20px; padding: 20px; background: #fffbea; border-radius: 8px; border-left: 4px solid #ffc107; border: 2px solid #ffc107;">
+                            <h5 style="color: #ff6b00; margin-bottom: 12px; font-size: 1.05rem; font-weight: 600;">Latest - Prompt #{{last_result.prompt_number}}</h5>
+                            {% if last_result.has_ties %}
+                                <p style="margin: 8px 0; color: #555; font-size: 0.9rem;">
+                                    <strong>{{last_result.alternative_answers|length}} Tied Best Answers</strong> | 
+                                    Score: <span class="score-badge">{{last_result.alternative_answers[0].score if last_result.alternative_answers else 'N/A'}}</span>
+                                </p>
+                                <div style="margin-top: 12px;">
+                                    {% for alt_answer in last_result.alternative_answers %}
+                                        <div style="margin-bottom: 10px; padding: 12px; background: #f0f4ff; border-radius: 5px; border-left: 2px solid #ffc107;">
+                                            <p style="margin: 0 0 8px 0; color: #667eea; font-size: 0.85rem; font-weight: 600;">{{alt_answer.info}}</p>
+                                            {% set alt_prompt_key = 'prompt_' ~ last_result.prompt_number %}
+                                            {% set alt_prompt_data = iteration_history.prompts.get(alt_prompt_key, {}) if iteration_history and iteration_history.prompts else {} %}
+                                            {% set alt_iter_data = alt_prompt_data.iterations|selectattr('iteration', 'equalto', alt_answer.iteration)|first if alt_prompt_data and alt_prompt_data.iterations else none %}
+                                            <details style="margin: 8px 0; background: #e8f4e8; border-radius: 4px; padding: 8px;">
+                                                <summary style="cursor: pointer; color: #28a745; font-size: 0.8rem; font-weight: 600;">📝 {% if alt_answer.layer_type == 'original' %}Original Prompt{% else %}Improved Prompt{% endif %}</summary>
+                                                <div style="margin-top: 8px; padding: 8px; background: white; border-radius: 4px; font-size: 0.8rem; color: #555;">
+                                                    {% if alt_answer.layer_type == 'original' %}
+                                                        {% if original_prompts and last_result.prompt_number <= original_prompts|length %}{{original_prompts[last_result.prompt_number - 1]}}{% else %}<em>(Original prompt not available)</em>{% endif %}
+                                                    {% elif alt_iter_data and alt_iter_data.layer2_improved_prompt %}
+                                                        {{alt_iter_data.layer2_improved_prompt}}
+                                                    {% else %}
+                                                        <em>(Improved prompt not available)</em>
+                                                    {% endif %}
+                                                </div>
+                                            </details>
+                                            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-size: 0.85rem;">{{alt_answer.text}}</pre>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p style="margin: 8px 0; color: #555; font-size: 0.9rem;">
+                                    Score: <span class="score-badge">{{last_result.best_score}}</span>
+                                </p>
+                                <p style="margin: 8px 0 12px 0; color: #667eea; font-size: 0.85rem; font-weight: 600;">{{last_result.best_info}}</p>
+                                {% set prompt_key = 'prompt_' ~ last_result.prompt_number %}
+                                {% set prompt_data = iteration_history.prompts.get(prompt_key, {}) if iteration_history and iteration_history.prompts else {} %}
+                                {% set iter_data = prompt_data.iterations|selectattr('iteration', 'equalto', last_result.iteration)|first if prompt_data and prompt_data.iterations and last_result.iteration else none %}
+                                <details style="margin: 8px 0 12px 0; background: #e8f4e8; border-radius: 6px; padding: 10px;">
+                                    <summary style="cursor: pointer; color: #28a745; font-size: 0.85rem; font-weight: 600;">📝 {% if last_result.layer_type == 'original' %}Original Prompt{% else %}Improved Prompt{% endif %}</summary>
+                                    <div style="margin-top: 10px; padding: 12px; background: white; border-radius: 5px; font-size: 0.85rem; color: #555; white-space: pre-wrap;">{% if last_result.layer_type == 'original' %}{% if original_prompts and last_result.prompt_number <= original_prompts|length %}{{original_prompts[last_result.prompt_number - 1]}}{% else %}<em>(Original prompt not available)</em>{% endif %}{% elif iter_data and iter_data.layer2_improved_prompt %}{{iter_data.layer2_improved_prompt}}{% else %}<em>(Improved prompt not available)</em>{% endif %}</div>
+                                </details>
+                                <pre style="margin-top: 0; white-space: pre-wrap; word-wrap: break-word; font-size: 0.85rem; background: #f0f4ff; padding: 15px; border-radius: 5px; border-left: 2px solid #ffc107;">{{last_result.best_answer}}</pre>
+                            {% endif %}
+                        </div>
+                        {% if results_list|length > 1 %}
+                            <div style="margin-top: 20px;">
+                                <h5 style="color: #667eea; margin-bottom: 12px; font-size: 0.95rem;">Previous Results</h5>
+                                {% for prompt_result in results_list[1:] %}
+                                    <details style="margin-bottom: 12px;">
+                                        <summary style="cursor: pointer; padding: 12px 15px; background: white; border-radius: 6px; border-left: 3px solid #9db4e8; color: #667eea; font-weight: 500; user-select: none;">Prompt #{{prompt_result.prompt_number}} - Score: {{prompt_result.alternative_answers[0].score if prompt_result.has_ties else prompt_result.best_score}}</summary>
+                                        <div style="margin-top: 10px; padding: 15px; background: #fafbff; border-radius: 6px; border-left: 3px solid #9db4e8;">
+                                            {% if prompt_result.has_ties %}
+                                                <p style="margin: 0 0 10px 0; color: #666; font-size: 0.9rem;">
+                                                    <strong>{{prompt_result.alternative_answers|length}} Tied Best Answers</strong>
+                                                </p>
+                                                {% for alt_answer in prompt_result.alternative_answers %}
+                                                    <div style="margin-bottom: 8px; padding: 8px; background: white; border-radius: 5px;">
+                                                        <p style="margin: 0 0 6px 0; color: #667eea; font-size: 0.8rem; font-weight: 600;">{{alt_answer.info}}</p>
+                                                        {% set prev_alt_prompt_key = 'prompt_' ~ prompt_result.prompt_number %}
+                                                        {% set prev_alt_prompt_data = iteration_history.prompts.get(prev_alt_prompt_key, {}) if iteration_history and iteration_history.prompts else {} %}
+                                                        {% set prev_alt_iter_data = prev_alt_prompt_data.iterations|selectattr('iteration', 'equalto', alt_answer.iteration)|first if prev_alt_prompt_data and prev_alt_prompt_data.iterations else none %}
+                                                        <details style="margin: 6px 0; background: #e8f4e8; border-radius: 4px; padding: 6px;">
+                                                            <summary style="cursor: pointer; color: #28a745; font-size: 0.75rem; font-weight: 600;">📝 {% if alt_answer.layer_type == 'original' %}Original Prompt{% else %}Improved Prompt{% endif %}</summary>
+                                                            <div style="margin-top: 6px; padding: 6px; background: white; border-radius: 4px; font-size: 0.75rem; color: #555;">
+                                                                {% if alt_answer.layer_type == 'original' %}
+                                                                    {% if original_prompts and prompt_result.prompt_number <= original_prompts|length %}{{original_prompts[prompt_result.prompt_number - 1]}}{% else %}<em>(Original prompt not available)</em>{% endif %}
+                                                                {% elif prev_alt_iter_data and prev_alt_iter_data.layer2_improved_prompt %}
+                                                                    {{prev_alt_iter_data.layer2_improved_prompt}}
+                                                                {% else %}
+                                                                    <em>(Improved prompt not available)</em>
+                                                                {% endif %}
+                                                            </div>
+                                                        </details>
+                                                        <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-size: 0.85rem;">{{alt_answer.text}}</pre>
+                                                    </div>
+                                                {% endfor %}
+                                            {% else %}
+                                                <p style="margin: 0 0 8px 0; color: #667eea; font-size: 0.8rem; font-weight: 600;">
+                                                    {{prompt_result.best_info}}
+                                                </p>
+                                                {% set prev_prompt_key = 'prompt_' ~ prompt_result.prompt_number %}
+                                                {% set prev_prompt_data = iteration_history.prompts.get(prev_prompt_key, {}) if iteration_history and iteration_history.prompts else {} %}
+                                                {% set prev_iter_data = prev_prompt_data.iterations|selectattr('iteration', 'equalto', prompt_result.iteration)|first if prev_prompt_data and prev_prompt_data.iterations and prompt_result.iteration else none %}
+                                                <details style="margin: 6px 0 10px 0; background: #e8f4e8; border-radius: 4px; padding: 8px;">
+                                                    <summary style="cursor: pointer; color: #28a745; font-size: 0.8rem; font-weight: 600;">📝 {% if prompt_result.layer_type == 'original' %}Original Prompt{% else %}Improved Prompt{% endif %}</summary>
+                                                    <div style="margin-top: 8px; padding: 8px; background: white; border-radius: 4px; font-size: 0.8rem; color: #555; white-space: pre-wrap;">{% if prompt_result.layer_type == 'original' %}{% if original_prompts and prompt_result.prompt_number <= original_prompts|length %}{{original_prompts[prompt_result.prompt_number - 1]}}{% else %}<em>(Original prompt not available)</em>{% endif %}{% elif prev_iter_data and prev_iter_data.layer2_improved_prompt %}{{prev_iter_data.layer2_improved_prompt}}{% else %}<em>(Improved prompt not available)</em>{% endif %}</div>
+                                                </details>
+                                                <pre style="margin-top: 0; white-space: pre-wrap; word-wrap: break-word; font-size: 0.85rem; background: white; padding: 15px; border-radius: 5px; border-left: 2px solid #ffc107;">{{prompt_result.best_answer}}</pre>
+                                            {% endif %}
+                                        </div>
+                                    </details>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            <hr class="divider">
+            
+            <!-- Unified Iteration History & Graphics Display -->
+            {% if iteration_history.prompts %}
+                {% for prompt_key, prompt_data in iteration_history.prompts.items()|reverse %}
+                <div style="margin-bottom: 40px;">
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                        <h3 style="color: white; font-size: 1.4rem; margin: 0;">
+                            Iteration History - Prompt #{{prompt_data.prompt_number if prompt_data.prompt_number else prompt_key.replace('prompt_', '')}}
+                        </h3>
+                        <button type="button" class="analyse-deeper-btn" data-prompt-number="{{prompt_data.prompt_number if prompt_data.prompt_number else prompt_key.replace('prompt_', '')}}" data-iterations='{{prompt_data.iterations|tojson}}' style="padding: 8px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95rem; font-weight: 500; transition: transform 0.2s, box-shadow 0.2s; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(102, 126, 234, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">Analyse Deeper<span class="info-icon" data-tooltip="View detailed charts and grading analysis">i</span></button>
+                    </div>
+                    
+                    <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+                        <!-- Graphic Display Area (Left) -->
+                        <div style="flex: 1; min-width: 350px; background: linear-gradient(135deg, rgba(255, 255, 255, 0.97) 0%, rgba(248, 249, 250, 0.95) 100%); border-radius: 15px; padding: 25px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); border: 1px solid rgba(227, 232, 237, 0.5);">
+                            <h4 style="color: #2d3436; margin-bottom: 20px; font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">Scores & Performance</h4>
+                            <canvas id="chart-prompt-{{prompt_data.prompt_number if prompt_data.prompt_number else prompt_key}}" style="max-height: 350px; min-height: 320px;"></canvas>
+                            <script>
+                                (function() {
+                                    const iterations = {{prompt_data.iterations|tojson}};
+                                    const canvasId = 'chart-prompt-{{prompt_data.prompt_number if prompt_data.prompt_number else prompt_key}}';
+                                    const canvas = document.getElementById(canvasId);
+                                    
+                                    if (canvas && iterations.length > 0) {
+                                        const ctx = canvas.getContext('2d');
+                                        const labels = iterations.map(it => 'Iteration ' + it.iteration);
+                                        const layer1aScores = iterations.map(it => parseFloat(it.layer1a_score) || 0);
+                                        const layer1bScores = iterations.map(it => parseFloat(it.layer1b_score) || 0);
+                                        const layer1aModel = 'Answer Model 1';
+                                        const layer1bModel = 'Answer Model 2';
+                                        const averageScores = iterations.map((it, idx) => {
+                                            return (layer1aScores[idx] + layer1bScores[idx]) / 2;
+                                        });
+                                        const isBestBests = iterations.map(it => it.is_best_best);
+                                        
+                                        // Detect degradation (score decreased from previous iteration)
+                                        const degradationFlags = [];
+                                        for (let i = 0; i < averageScores.length; i++) {
+                                            if (i > 0 && averageScores[i] < averageScores[i-1]) {
+                                                degradationFlags[i] = true;
+                                            } else {
+                                                degradationFlags[i] = false;
+                                            }
+                                        }
+                                        
+                                        // Chart configuration
+                                        const chartConfig = {
+                                            type: 'bar',
+                                            data: {
+                                                labels: labels,
+                                                datasets: [
+                                                    {
+                                                        label: layer1aModel,
+                                                        data: layer1aScores,
+                                                        backgroundColor: '#0984E3',
+                                                        borderColor: '#0984E3',
+                                                        borderWidth: 0,
+                                                        borderRadius: 8,
+                                                        yAxisID: 'y',
+                                                        hoverBackgroundColor: '#0565C8',
+                                                        barPercentage: 0.75
+                                                    },
+                                                    {
+                                                        label: layer1bModel,
+                                                        data: layer1bScores,
+                                                        backgroundColor: '#E84393',
+                                                        borderColor: '#E84393',
+                                                        borderWidth: 0,
+                                                        borderRadius: 8,
+                                                        yAxisID: 'y',
+                                                        hoverBackgroundColor: '#D1216E',
+                                                        barPercentage: 0.75
+                                                    },
+                                                    {
+                                                        label: 'Average Grade',
+                                                        data: averageScores,
+                                                        borderColor: function(context) {
+                                                            const idx = context.dataIndex;
+                                                            if (degradationFlags[idx]) return '#DC3545';
+                                                            return '#00B894';
+                                                        },
+                                                        backgroundColor: function(context) {
+                                                            const idx = context.dataIndex;
+                                                            if (degradationFlags[idx]) return 'rgba(220, 53, 69, 0.15)';
+                                                            return 'rgba(0, 184, 148, 0.15)';
+                                                        },
+                                                        borderWidth: 4,
+                                                        type: 'line',
+                                                        fill: false,
+                                                        tension: 0.45,
+                                                        pointRadius: 9,
+                                                        pointHoverRadius: 12,
+                                                        pointBackgroundColor: function(context) {
+                                                            const idx = context.dataIndex;
+                                                            if (isBestBests[idx]) return '#FFC107';
+                                                            if (degradationFlags[idx]) return '#DC3545';
+                                                            return '#00B894';
+                                                        },
+                                                        pointBorderColor: '#FFFFFF',
+                                                        pointBorderWidth: 3,
+                                                        yAxisID: 'y',
+                                                        segment: {
+                                                            borderDash: ctx => ctx.p0?.y > ctx.p1?.y ? [5, 5] : []
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                            options: {
+                                                responsive: true,
+                                                maintainAspectRatio: true,
+                                                animation: {
+                                                    duration: 750,
+                                                    easing: 'easeInOutQuart'
+                                                },
+                                                interaction: {
+                                                    intersect: false,
+                                                    mode: 'index'
+                                                },
+                                                plugins: {
+                                                    datalabels: {
+                                                        display: true,
+                                                        formatter: function(value, context) {
+                                                            if (value === null || value === undefined) return '';
+                                                            if (context.datasetIndex === 2) {
+                                                                const idx = context.dataIndex;
+                                                                const maxScore = Math.max(layer1aScores[idx] || 0, layer1bScores[idx] || 0);
+                                                                return Math.round(maxScore);
+                                                            }
+                                                            const numericValue = parseFloat(value);
+                                                            if (Number.isNaN(numericValue)) return value;
+                                                            return numericValue.toFixed(1);
+                                                        },
+                                                        color: '#000000',
+                                                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                                        borderRadius: 4,
+                                                        padding: 4,
+                                                        font: {
+                                                            size: 11,
+                                                            weight: 'bold'
+                                                        },
+                                                        anchor: 'top',
+                                                        offset: function(context) {
+                                                            return context.datasetIndex === 2 ? 14 : 6;
+                                                        }
+                                                    },
+                                                    legend: {
+                                                        display: true,
+                                                        position: 'bottom',
+                                                        labels: {
+                                                            font: {size: 14, weight: 700},
+                                                            padding: 20,
+                                                            usePointStyle: true,
+                                                            boxWidth: 12,
+                                                            color: '#333'
+                                                        }
+                                                    },
+                                                    tooltip: {
+                                                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                                        padding: 16,
+                                                        titleFont: {size: 17, weight: 'bold'},
+                                                        bodyFont: {size: 16},
+                                                        borderColor: 'rgba(255, 255, 255, 0.5)',
+                                                        borderWidth: 2,
+                                                        borderRadius: 8,
+                                                        boxPadding: 10,
+                                                        displayColors: true,
+                                                        callbacks: {
+                                                            afterLabel: function(context) {
+                                                                const idx = context.dataIndex;
+                                                                let extra = '';
+                                                                if (isBestBests[idx]) extra += '🏆 Best-Best\\n';
+                                                                if (degradationFlags[idx]) extra += '⚠️ Degradation\\n';
+                                                                return extra;
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                scales: {
+                                                    y: {
+                                                        type: 'linear',
+                                                        position: 'left',
+                                                        beginAtZero: true,
+                                                        max: 100,
+                                                        grid: {
+                                                            color: 'rgba(0, 0, 0, 0.08)',
+                                                            drawBorder: false,
+                                                            lineWidth: 1.5
+                                                        },
+                                                        ticks: {
+                                                            color: '#555',
+                                                            font: {size: 14, weight: 600},
+                                                            padding: 10,
+                                                            callback: function(value) {
+                                                                return value + ' pts';
+                                                            }
+                                                        },
+                                                        title: {
+                                                            display: true,
+                                                            text: 'Score',
+                                                            font: {size: 13, weight: 700}
+                                                        }
+                                                    },
+                                                    x: {
+                                                        grid: {
+                                                            display: false,
+                                                            drawBorder: false
+                                                        },
+                                                        ticks: {
+                                                            color: '#555',
+                                                            font: {size: 13, weight: 600},
+                                                            padding: 8
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        };
+                                        
+                                        // Create chart
+                                        setTimeout(() => {
+                                            if (window.Chart) {
+                                                if (window.ChartDataLabels) {
+                                                    window.Chart.register(window.ChartDataLabels);
+                                                }
+                                                chartConfig.plugins = [window.ChartDataLabels];
+                                                new window.Chart(ctx, chartConfig);
+                                            }
+                                        }, 100);
+                                    }
+                                })();
+                            </script>
+                        </div>
+                        
+                        <!-- Iteration Details (Right) -->
+                        <div style="flex: 1; min-width: 300px;">
+                            {% if prompt_data.iterations %}
+                                {% for iteration in prompt_data.iterations %}
+                                <div class="iteration-item" style="margin-bottom: 12px;">
+                                    <span class="iteration-number">{{iteration.iteration}}</span>
+                                    <div class="score-comparison">
+                                        <span class="layer-score layer1a" title="{{iteration.layer1a_model_used}}">{{iteration.layer1a_model_used[:15]}}: {{iteration.layer1a_score}} ({{iteration.layer1a_time|round(1)}}s)</span>
+                                        <span class="layer-score layer1b" title="{{iteration.layer1b_model_used}}">{{iteration.layer1b_model_used[:15]}}: {{iteration.layer1b_score}} ({{iteration.layer1b_time|round(1)}}s)</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+                                        <span class="winner-badge {% if iteration.winner == 'original' %}winner-a{% else %}winner-b{% endif %}">
+                                            {{(iteration.layer1a_model_used if iteration.winner == 'original' else iteration.layer1b_model_used)[:15]}}
+                                        </span>
+                                        {% if iteration.is_best_best %}
+                                        <span class="best-best-indicator">🏆</span>
+                                        {% endif %}
+                                        {% if loop.index > 1 and iteration.best_score < prompt_data.iterations[loop.index0 - 1].best_score %}
+                                        <span style="color: #dc3545; font-weight: 600;">⚠️ Degraded</span>
+                                        {% endif %}
+                                    </div>
+                                    <div style="margin-top: 6px; font-size: 0.9rem;">
+                                        <span style="font-weight: 600;">Best: </span><span style="font-weight: 700; color: #0984e3;">{% if iteration.winner == 'original' %}{{iteration.layer1a_score}}{% else %}{{iteration.layer1b_score}}{% endif %}</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <p style="color: #666; text-align: center; margin-top: 20px; padding: 30px;">No iteration history yet. Run an analysis to see results here.</p>
+            {% endif %}
+
+            <hr class="divider">
+            
+            <h4 class="section-title">📊 Console Output</h4>
+            <div class="console-output">{{console}}</div>
+        </div>
+
+        <div class="sidebar">
+            <button class="advanced-btn" id="advancedBtn" onclick="toggleAdvancedSidebar()" title="Configure different models for specific iterations">
+                <span id="advancedBtnIcon">⚙️</span>
+                <span id="advancedBtnText">Advanced</span>
+                <span class="info-icon" data-tooltip="Open to select models per iteration">i</span>
+            </button>
+            <p style="font-size: 0.8rem; margin-bottom: 18px; line-height: 1.4; text-align: center;"><span style="color: #4caf50;"><b>FAST</b>   </span>, <span style="color: #ffc107;"><b>MIDDLE</b>   </span>, <span style="color: #ff9800;"><b>SLOWER</b>   </span>, <span style="color: #f44336;"><b>SLOW</b></span>.</p>
+            
+            <div class="model-selector model-selector-layer1a">
+                <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Answer Model 1<span class="info-icon" data-tooltip="First model to answer your prompt">i</span></h4>
+                <select id="modelSelectA" class="model-select">
+                    {% for model in available_layer1a_models %}
+                    <option value="{{model}}" {% if model == current_layer1a_model %}selected{% endif %}>{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
+                    {% endfor %}
+                </select>
+                <div class="model-buttons">
+                    <button class="model-btn model-btn-apply" onclick="applyModelA()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Apply</button>
+                    <button class="model-btn model-btn-reset" onclick="resetModelA()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Reset</button>
+                </div>
+                <div id="modelStatusA" class="model-status default">
+                    {% if current_layer1a_model != default_layer1a_model %}
+                    Using custom model: {{current_layer1a_model}}
+                    {% else %}
+                    Using default model: {{current_layer1a_model}}
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="model-selector model-selector-layer1b">
+                <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Answer Model 2<span class="info-icon" data-tooltip="Second model to answer your prompt">i</span></h4>
+                <select id="modelSelectB" class="model-select">
+                    {% for model in available_layer1b_models %}
+                    <option value="{{model}}" {% if model == current_layer1b_model %}selected{% endif %}>{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
+                    {% endfor %}
+                </select>
+                <div class="model-buttons">
+                    <button class="model-btn model-btn-apply" onclick="applyModelB()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Apply</button>
+                    <button class="model-btn model-btn-reset" onclick="resetModelB()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Reset</button>
+                </div>
+                <div id="modelStatusB" class="model-status default">
+                    {% if current_layer1b_model != default_layer1b_model %}
+                    Using custom model: {{current_layer1b_model}}
+                    {% else %}
+                    Using default model: {{current_layer1b_model}}
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="model-selector model-selector-layer2">
+                <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Prompt Model<span class="info-icon" data-tooltip="Enhances the prompt between iterations">i</span></h4>
+                <select id="modelSelectLayer2" class="model-select">
+                    {% for model in available_layer2_models %}
+                    <option value="{{model}}" {% if model == current_layer2_model %}selected{% endif %}>{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
+                    {% endfor %}
+                </select>
+                <div class="model-buttons">
+                    <button class="model-btn model-btn-apply" onclick="applyModelLayer2()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Apply</button>
+                    <button class="model-btn model-btn-reset" onclick="resetModelLayer2()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Reset</button>
+                </div>
+                <div id="modelStatusLayer2" class="model-status default">
+                    {% if current_layer2_model != default_layer2_model %}
+                    Using custom model: {{current_layer2_model}}
+                    {% else %}
+                    Using default model: {{current_layer2_model}}
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="model-selector model-selector-layer0">
+                <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Idea Making Model<span class="info-icon" data-tooltip="Generates alternative answer ideas">i</span></h4>
+                <select id="modelSelectLayer0" class="model-select">
+                    {% for model in available_layer0_models %}
+                    <option value="{{model}}" {% if model == current_layer0_model %}selected{% endif %}>{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
+                    {% endfor %}
+                </select>
+                <div class="model-buttons">
+                    <button class="model-btn model-btn-apply" onclick="applyModelLayer0()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Apply</button>
+                    <button class="model-btn model-btn-reset" onclick="resetModelLayer0()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Reset</button>
+                </div>
+                <div id="modelStatusLayer0" class="model-status default">
+                    {% if current_layer0_model != default_layer0_model %}
+                    Using custom model: {{current_layer0_model}}
+                    {% else %}
+                    Using default model: {{current_layer0_model}}
+                    {% endif %}
+                </div>
+            </div>
+
+
+
+
+        </div>
+
+        <div class="advanced-sidebar collapsed" id="advancedSidebar">
+            <h3>⚙️ Advanced Configuration</h3>
+            <p style="color: #666; font-size: 0.8rem; margin-bottom: 18px; line-height: 1.4;">
+                Set models per iteration or leave blank for defaults. Click Save.
+            </p>
+            
+            <div style="margin-bottom: 22px; background: linear-gradient(135deg, rgba(100, 150, 200, 0.06) 0%, rgba(100, 150, 200, 0.09) 100%); padding: 12px; border-radius: 8px; border-left: 4px solid #6b96c8;">
+                <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Answer model 1</h4>
+                {% for i in range(1, max_iterations|int + 1) %}
+                <div class="iteration-model-selector">
+                    <h5 style="font-size: 0.85rem;">Iter {{i}}</h5>
+                    <select class="advanced-model-select" data-layer="a" data-iteration="{{i}}">
+                        <option value="">Default</option>
+                        {% for model in available_layer1a_models %}
+                        <option value="{{model}}">{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div style="margin-bottom: 22px; background: linear-gradient(135deg, rgba(195, 130, 155, 0.06) 0%, rgba(195, 130, 155, 0.09) 100%); padding: 12px; border-radius: 8px; border-left: 4px solid #c38299;">
+                <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Answer model 2</h4>
+                {% for i in range(1, max_iterations|int + 1) %}
+                <div class="iteration-model-selector">
+                    <h5 style="font-size: 0.85rem;">Iter {{i}}</h5>
+                    <select class="advanced-model-select" data-layer="b" data-iteration="{{i}}">
+                        <option value="">Default</option>
+                        {% for model in available_layer1b_models %}
+                        <option value="{{model}}">{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div style="margin-bottom: 22px; background: linear-gradient(135deg, rgba(145, 140, 190, 0.06) 0%, rgba(145, 140, 190, 0.09) 100%); padding: 12px; border-radius: 8px; border-left: 4px solid #918cbe;">
+                <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Prompt Model</h4>
+                {% if not (advanced_layer2_models|length > 0) %}
+                <div id="improverModelStatus" style="background: rgba(145, 140, 190, 0.06); border: 1px solid rgba(145, 140, 190, 0.15); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 0.85rem; color: #918cbe; text-align: center;">
+                    Using: {{current_layer2_model}}
+                </div>
+                {% endif %}
+                {% for i in range(1, max_iterations|int + 1) %}
+                <div class="iteration-model-selector">
+                    <h5 style="font-size: 0.85rem;">Iter {{i}}</h5>
+                    <select class="advanced-model-select" data-layer="layer2" data-iteration="{{i}}">
+                        <option value="">Default</option>
+                        {% for model in available_layer2_models %}
+                        <option value="{{model}}">{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="advanced-controls">
+                <button class="advanced-control-btn save" onclick="saveAdvancedModels()" style="flex: 1;">💾 Save</button>
+                <button class="advanced-control-btn clear" onclick="clearAdvancedModels()" style="flex: 1;">🗑️ Clr</button>
+            </div>
+            
+            <div id="advancedStatus" class="advanced-status info" style="display: none;">
+                ✓ Ready
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Processing Overlay -->
+<div class="processing-overlay" id="processingOverlay" style="display: none;">
+    <div class="processing-content">
+        <div style="width: 140px; height: 140px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto 30px; box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3); border: 3px solid rgba(255, 255, 255, 0.2); animation: pulse 3s ease-in-out infinite;">
+            <div style="font-family: 'Dancing Script', cursive; color: #ffffff; font-size: 1.8rem; font-weight: 700; text-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: center; letter-spacing: -0.5px;">LLM🔍InSights</div>
+        </div>
+        <h2 style="color: #2D004D;">🔄 Processing Analysis</h2>
+        <p>Running iterative analysis on your prompt...</p>
+        <img src="/static/loading-red-spot.gif" class="spinner" alt="Loading" />
+        <p id="iterationDisplay" style="margin-top: 20px; font-size: 1.1rem; color: #2196F3; font-weight: 600;">
+            Iteration: <span id="iterationCount">1</span>
+        </p>
+        <p style="margin-top: 12px; font-size: 1.1rem; color: #2196F3; font-weight: 600;">
+            Model Runs completed: <span id="modelsExecuted">0</span>
+        </p>
+        <p style="margin-top: 12px; font-size: 0.9rem; color: #888;">
+            This may take a few moments depending on the complexity of your prompt.
+        </p>
+        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.75rem; color: #666; text-align: center;">
+            <span class="⚠️ not-production">NOT for production</span>. ⚠️ Demo only. All rights preserved to Yuval Haim.
+        </div>
+    </div>
+</div>
+
+<!-- Download Options Modal -->
+<div class="processing-overlay" id="downloadModal" style="display: none;">
+    <div class="processing-content">
+        <div class="logo-circle"><h2>LLM🔍<br>InSights</h2></div>
+        <h2 style="color: #ffffff; margin: -25px 0 5px 0 !important; font-size: 1.1rem;">📥 Download Chat</h2>
+        <p style="margin-bottom: 8px !important; color: #ffffff; font-size: 0.9rem;">Select format, json allows upload:</p>
+        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: -5px !important;">
+            <button onclick="downloadAsText()" style="padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">📄 As Text</button>
+            <button onclick="downloadAsJson()" style="padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">{ } As JSON</button>
+            <button onclick="closeDownloadModal()" style="padding: 10px 20px; background: #999; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    <span class="not-production">⚠️ NOT for production, Demo only</span>. <span style="color: white;">⚠️ All rights reserved to Yuval Haim.</span>
+</div>
+
+<script>
+const iterationHistory = {{ iteration_history|tojson }};
+const isUsingCustomWeights = {{ 'true' if is_using_custom_weights else 'false' }};
+const initialGraderSettingName = '{{ grader_setting_name }}';
+const initialGraderWeights = {{ current_weights|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+window.addEventListener('beforeunload', function() {
+    navigator.sendBeacon('/shutdown-notify');
+});
+</script>
+
+</body>
+</html>
+

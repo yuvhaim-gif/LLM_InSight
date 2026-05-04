@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM🔍InSights - Config Graders</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' font-size='90' dominant-baseline='middle' text-anchor='middle'>🎩</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/config_graders.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <div style="margin-bottom: 20px;">
+        <a href="/" class="back-button" style="position: fixed; top: 20px; left: 20px; z-index: 1000;">← Back to Main 🎯</a>
+    </div>
+
+    <div style="position: fixed; top: 20px; right: 20px; z-index: 1000; width: 140px; height: 140px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3); border: 3px solid rgba(255, 255, 255, 0.2); animation: pulse 3s ease-in-out infinite;">
+        <div style="font-family: 'Dancing Script', cursive; color: #ffffff; font-size: 1.8rem; font-weight: 700; text-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: center; letter-spacing: -0.5px;">LLM🔍InSights</div>
+    </div>
+
+    <div class="header">
+        <h1>⚙️ Configure Grader Settings</h1>
+        <p>Define grading keys, rubrics, and grader models for each key</p>
+    </div>
+
+    <div class="main-card">
+        <div class="setting-selector-row">
+            <label>Load Setting:</label>
+            <select id="settingSelector">
+                {% for s in available_grader_settings %}
+                <option value="{{s}}" {% if s == grader_setting_name %}selected{% endif %}>{{s}}{% if s == 'default' %} (read-only){% endif %}</option>
+                {% endfor %}
+            </select>
+            <button class="btn-load" onclick="loadSetting()">Load</button>
+        </div>
+
+        <div class="edit-toggle-row">
+            <button class="btn-edit" id="btnEdit" onclick="enterEditMode()">✏️ Edit</button>
+            <button class="btn-cancel-edit" id="btnCancelEdit" onclick="cancelEditMode()">Cancel</button>
+            <span id="readonlyNotice" style="color: rgba(255,255,255,0.6); font-size: 0.85rem; display: none;">Default setting is read-only</span>
+        </div>
+
+        <div id="keysContainer" class="view-mode">
+            <table class="grading-keys-table" id="keysTable">
+                <thead>
+                    <tr>
+                        <th style="width: 13%;">Key Name</th>
+                        <th style="width: 40%;">Rubric</th>
+                        <th style="width: 18%;">Grader Model</th>
+                        <th style="width: 12%;">Weight %</th>
+                        <th style="width: 17%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="keysBody">
+                </tbody>
+            </table>
+
+            <div class="actions-row" style="display: flex; align-items: center; gap: 16px;">
+                <button class="btn-add-key" onclick="addKeyRow()">+ Add Grading Key</button>
+                <span id="weightTotalIndicator" style="font-size: 0.9rem; font-weight: 700; padding: 5px 14px; border-radius: 999px; background: #e9ecef; color: #495057;">Total: 0%</span>
+            </div>
+        </div>
+
+        <div class="save-section">
+            <label>Setting Name:</label>
+            <input type="text" id="settingNameInput" placeholder="e.g. my_custom_graders" value="">
+            <button class="btn-save" id="btnSave" onclick="saveSetting()">💾 Save Setting</button>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="overwriteModal">
+    <div class="modal-box">
+        <h3>⚠️ Overwrite Existing Setting?</h3>
+        <p id="overwriteText">A grader setting with this name already exists. Saving will override the old definitions. Continue?</p>
+        <div class="modal-btns">
+            <button class="modal-btn-confirm" onclick="confirmOverwrite()">Overwrite</button>
+            <button class="modal-btn-cancel" onclick="closeOverwriteModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    <span class="not-production">⚠️ NOT for production, Demo only</span>. <span style="color: white;">⚠️ All rights reserved to Yuval Haim.</span>
+</div>
+
+<script>
+const AVAILABLE_GRADER_MODELS = {{ available_grader_models|tojson }};
+const INITIAL_CONFIG = {{ grader_config|tojson }};
+const INITIAL_SETTING_NAME = {{ grader_setting_name|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/config_graders.js') }}"></script>
+
+</body>
+</html>
