@@ -4,6 +4,10 @@
 
 A hands-on demo for building your own grading rubric, automatically optimizing prompts, A/B testing models, and refining synthetic data — all from the browser. No code changes needed; every experiment is configured through frontend selectors and pages.
 
+## Demo
+
+<video src="screenshots/Recording%202026-05-05.mp4" controls width="800"></video>
+
 ## Core Idea
 
 You write a prompt. The system sends it to two competing LLM models, grades both answers with configurable rubrics, rewrites the prompt using grader feedback, and repeats — keeping the best answer each round. You control every variable from the UI: which models compete, what the rubric measures, how categories are weighted, and when the loop stops.
