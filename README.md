@@ -6,7 +6,7 @@ A hands-on demo for building your own grading rubric, automatically optimizing p
 
 ## Demo
 
-<video src="screenshots/Recording%202026-05-05.mp4" controls width="800"></video>
+[![Watch Demo](screenshots/Main%20page.png)](screenshots/Recording%202026-05-05.mp4)
 
 ## Core Idea
 
