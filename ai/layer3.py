@@ -69,9 +69,13 @@ def _build_grader_messages(category: str, prompt_text: str, answer_text: str, ru
             "Rules:\n"
             "1. Evaluate only this category and ignore all others.\n"
             "2. Score must be an integer between 1 and 100.\n"
-            "3. feedback must be exactly ONE line, direct, concrete, and actionable.\n"
-            "4. No bullets, no markdown, no newline characters in feedback.\n"
-            "5. Return only the JSON object with no extra text."
+            "3. The \"feedback\" value is a short grader note — one sentence, like a sticky note a teacher leaves in a margin. "
+            "Keep it under 20 words. Do not explain your reasoning, do not list examples, do not quote the prompt or the answer. "
+            "Just write your brief verdict on this category.\n"
+            "4. No bullets, no markdown, no newline characters in the feedback value.\n"
+            "5. Return only the JSON object with no extra text.\n\n"
+            "Example of a correct response:\n"
+            "{\"score\": 72, \"feedback\": \"Mostly accurate but one unsupported claim weakens the argument.\"}"
         )},
         {"role": "user", "content": (
             f"Category: {category}\n\n"
