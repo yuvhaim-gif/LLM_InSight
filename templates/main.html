@@ -784,7 +784,19 @@ const isUsingCustomWeights = {{ 'true' if is_using_custom_weights else 'false' }
 const initialGraderSettingName = '{{ grader_setting_name }}';
 const initialGraderWeights = {{ current_weights|tojson }};
 </script>
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/shared/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/shared/chart-helpers.js') }}"></script>
+<script src="{{ url_for('static', filename='js/shared/deeper-analysis.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main/weights.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main/filters.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main/toggles.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main/models.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main/grader-settings.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main/download.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main/upload.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main/processing.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main/advanced.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main/init.js') }}"></script>
 <script>
 window.addEventListener('beforeunload', function() {
     navigator.sendBeacon('/shutdown-notify');

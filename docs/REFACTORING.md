@@ -4,7 +4,7 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
 
 ## Stable Contracts
 
-- Route URLs and payload shapes used by `main.js`, `review.js`, and `config_graders.js`.
+- Route URLs and payload shapes used by frontend JS modules (`static/js/main/`, `static/js/review/`, `static/js/shared/`, `config_graders.js`).
 - Session key names used across backend and frontend handoff.
 - Runtime file names and paths: `ledger.jsonl`, `iteration_history.json`, `best_best_layer1.json`, `console_output.txt`.
 - Backup payload version `2.0` and key layout (including `grader_setting_name` in `session_data`).
@@ -28,14 +28,16 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
   - `loaded_grader_setting_name`
 - Chart.js and datalabels plugin loaded from CDN in both `main.html` and `review.html`.
 - Config Graders page receives `AVAILABLE_GRADER_MODELS`, `INITIAL_CONFIG`, and `INITIAL_SETTING_NAME` as inline script variables from the template.
-- Grader setting selector on main page triggers `applyGraderSetting()` which calls `/set_grader_setting` and dynamically rebuilds weight inputs.
+- Grader setting selector on main page triggers `applyGraderSetting()` (in `main/grader-settings.js`) which calls `/set_grader_setting` and dynamically rebuilds weight inputs.
 - Review page iteration cards and score grids detect grading keys dynamically from data — they are not hardcoded to the default five categories. However, the All Prompts Summary table header columns are hardcoded to the default five (accuracy, clarity, creativity, structure, conciseness).
+- `shared/deeper-analysis.js` uses `typeof initialGraderWeights !== 'undefined'` to safely handle the review page where that template variable is not defined. On the review page, `openDeeperAnalysis()` receives `graderSettingName` and `savedWeights` from the chat data; on the main page, it reads weights from sidebar inputs.
+- `main.html` loads 13 script files (3 shared + 10 main); `review.html` loads 9 (3 shared + 6 review). Load order matters: shared first, then domain modules, then init (which registers event listeners).
 
 ## Implementation Notes
 
 - Progress endpoints (`/is-processing`, `/iteration`, `/iteration-wait`) are public (no auth guard).
 - `max_iterations`: backend and UI both enforce 1-5.
-- `main.js` and `review.js` are large single files (~124 KB and ~97 KB respectively).
+- Frontend JS is split into modular files under `static/js/shared/`, `static/js/main/`, and `static/js/review/`. The Deeper Analysis modal code is unified in `shared/deeper-analysis.js` (used by both main and review pages). All functions remain at global scope for compatibility with inline `onclick` handlers in templates. Script load order in templates preserves dependency chains: shared modules → domain modules → init.
 - Credentials are loaded from `.env` via `secrets_config.py`. Only `APP_USER`, `APP_PASS`, and `FLASK_SECRET` are required (missing these causes exit). Provider keys (`MISTRAL_API_KEY`, `GOOGLE_API_KEY`, `LANGCHAIN_API_KEY`) are optional — missing ones print a note at startup and the corresponding providers return errors when called. `LANGCHAIN_PROJECT` defaults to `"llminsight"` if unset.
 - `utils/validation.py` provides input/integer/float/model validators.
 - GLM model cache (`state._glm_model_cache`) is keyed by HuggingFace model ID, preloaded at startup, unloaded on exit/process signal. Thread-safe via double-checked locking (`state._glm_load_lock`), cancellable via `state._glm_cancel_load`.
@@ -55,7 +57,7 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
 ## Safe Refactoring Steps
 
 1. Keep endpoint signatures stable.
-2. Split frontend scripts by feature without changing API contracts.
+2. ~~Split frontend scripts by feature without changing API contracts.~~ ✅ Done — `main.js` and `review.js` split into `shared/`, `main/`, `review/` modules. Shared Deeper Analysis modal unified. Dead code (duplicate download functions) removed.
 3. Extract repeated payload builders into shared utilities.
 4. Add contract tests: backup schema, restore behavior, advanced map compatibility, auth matrix, provider routing.
 5. Then optimize internals (loop granularity, parser boundaries, logging).
@@ -80,6 +82,8 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
 - Upload button disabled when console has content, enabled when empty.
 - System type selector correctly filters model dropdowns by speed category.
 - Multi-prompt sessions carry best-best context forward correctly.
+- All inline `onclick`/`onchange` handlers in templates and dynamically-generated HTML resolve to globally-scoped functions in loaded modules.
+- Deeper Analysis modal works on both main page (reads sidebar weights) and review page (receives saved weights from chat data).
 
 ## References
 

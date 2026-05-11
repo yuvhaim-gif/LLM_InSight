@@ -26,6 +26,7 @@ How the demo is structured — components, data flow, and persistence. The syste
 | Common utilities | `utils/common.py` | Scoring, JSON parsing, error detection, `@traceable` wrapper |
 | Validation | `utils/validation.py` | Input/integer/float/model validators |
 | Runtime state | `state.py` | In-memory: iteration counter, processing flag, model counter, GLM cache, load lock, cancel event |
+| Frontend JS | `static/js/shared/` (utils, chart-helpers, deeper-analysis), `static/js/main/` (weights, filters, toggles, models, grader-settings, download, upload, processing, advanced, init), `static/js/review/` (state, chat-list, prompt-view, prompt-chart, modals, init), `static/js/config_graders.js` | Modular scripts loaded per page; shared modules provide common utilities and the Deeper Analysis modal |
 
 ## Provider Routing
 
