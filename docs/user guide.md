@@ -242,7 +242,7 @@ Multi-prompt sessions carry the best answer from the previous prompt forward as 
 
 - Four providers routed by model name: Ollama (local), Mistral API, Google Gemini API, GLM-4 (HuggingFace).
 - GLM-4 models are preloaded in the background at startup and unloaded on exit or process termination (Ctrl+C).
-- 26 preconfigured models across layers.
+- 28 preconfigured models across layers.
 - Independent model selection per layer.
 - Advanced mode: different model per iteration per layer.
 - Model changes between iterations are detected and logged.

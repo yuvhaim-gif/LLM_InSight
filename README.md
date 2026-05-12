@@ -95,8 +95,8 @@ If you only want to use a subset of providers, simply leave the corresponding AP
 ## Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/llm-insights.git
-cd llm-insights
+git clone https://github.com/yuvhaim-gif/LLM_InSight.git
+cd LLM_InSight
 python -m venv venv
 source venv/bin/activate   # Linux/macOS
 venv\Scripts\activate      # Windows
@@ -224,7 +224,7 @@ Calls are routed automatically by model name:
 | Google Gemini API | `gemini-2.5-flash`, `gemini-2.5-pro` | REST with retry |
 | GLM-4 (HuggingFace) | `glm-4-9b`, `glm-4-9b-chat` | Local `transformers`, cached, preloaded at startup, unloaded on exit |
 
-26 preconfigured models available across layers, including gemma, granite, llama, qwen, deepseek-r1, falcon3, phi4, devstral, solar, codellama, dolphin3, olmo2, starcoder2, and gpt-oss.
+28 preconfigured models available across layers, including gemma, granite, llama, qwen, deepseek-r1, deepseek-coder-v2, falcon3, phi4, devstral, solar, codellama, dolphin3, olmo2, starcoder2, and gpt-oss.
 
 ## Dependencies and Tools
 
