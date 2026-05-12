@@ -289,7 +289,7 @@ LangSmith/LangChain tracing on all AI layers via `@traceable` decorators. Requir
 - **AI pipeline**: `ai/iterative_loop.py`, `ai/layer0.py`, `ai/layer1.py`, `ai/layer2.py`, `ai/layer3.py`, `ai/api_calls.py`
 - **Data models**: `models.py` (Pydantic: `Layer2Response`, `Layer2Critique`)
 - **Utilities**: `utils/session.py`, `utils/file_io.py`, `utils/common.py`, `utils/text_processing.py`, `utils/validation.py`, `utils/grader_settings.py`, `state.py`
-- **Frontend**: `templates/` (login, main, review, config_graders), `static/js/`, `static/css/`
+- **Frontend**: `templates/` (login, main, review, config_graders), `templates/partials/` (shared Jinja2 includes and macros), `static/css/shared.css` (common base styles), `static/css/` (page-specific overrides), `static/js/`
 
 ## Documentation
 

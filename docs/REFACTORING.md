@@ -26,12 +26,12 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
   - `loaded_layer0_model`, `loaded_layer2_model`
   - `loaded_layer1_last_best_context_enabled`, `loaded_grade_vs_prompt_mode`
   - `loaded_grader_setting_name`
-- Chart.js and datalabels plugin loaded from CDN in both `main.html` and `review.html`.
+- Chart.js and datalabels plugin loaded from CDN via `_head_charts.html` partial in both `main.html` and `review.html`.
 - Config Graders page receives `AVAILABLE_GRADER_MODELS`, `INITIAL_CONFIG`, and `INITIAL_SETTING_NAME` as inline script variables from the template.
 - Grader setting selector on main page triggers `applyGraderSetting()` (in `main/grader-settings.js`) which calls `/set_grader_setting` and dynamically rebuilds weight inputs.
 - Review page iteration cards and score grids detect grading keys dynamically from data — they are not hardcoded to the default five categories. However, the All Prompts Summary table header columns are hardcoded to the default five (accuracy, clarity, creativity, structure, conciseness).
 - `shared/deeper-analysis.js` uses `typeof initialGraderWeights !== 'undefined'` to safely handle the review page where that template variable is not defined. On the review page, `openDeeperAnalysis()` receives `graderSettingName` and `savedWeights` from the chat data; on the main page, it reads weights from sidebar inputs.
-- `main.html` loads 13 script files (3 shared + 10 main); `review.html` loads 9 (3 shared + 6 review). Load order matters: shared first, then domain modules, then init (which registers event listeners).
+- `main.html` loads 13 script files (3 shared + 10 main); `review.html` loads 9 (3 shared + 6 review). Load order matters: shared first, then domain modules, then init (which registers event listeners). CSS load order: `shared.css` (via `_head_common.html` partial) loads before page-specific CSS files, ensuring page overrides work correctly.
 
 ## Implementation Notes
 
@@ -58,7 +58,7 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
 
 1. Keep endpoint signatures stable.
 2. ~~Split frontend scripts by feature without changing API contracts.~~ ✅ Done — `main.js` and `review.js` split into `shared/`, `main/`, `review/` modules. Shared Deeper Analysis modal unified. Dead code (duplicate download functions) removed.
-3. Extract repeated payload builders into shared utilities.
+3. ~~Extract repeated payload builders into shared utilities.~~ ✅ Done — duplicated CSS (reset, body gradient, star overlay, keyframes, footer, logo-circle, deeper-analysis modal) extracted to `static/css/shared.css`. Repeated HTML fragments (head meta/links, footer, logo badge, deeper-analysis modal, model selector blocks, cloud icon logic) extracted to Jinja2 partials in `templates/partials/`. Page-specific CSS files retain only override rules. All templates use `{% include %}` and Jinja macros. No visual, JS, route, or backend changes.
 4. Add contract tests: backup schema, restore behavior, advanced map compatibility, auth matrix, provider routing.
 5. Then optimize internals (loop granularity, parser boundaries, logging).
 

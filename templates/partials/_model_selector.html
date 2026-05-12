@@ -1,0 +1,22 @@
+{% macro model_selector(layer_label, select_id, model_list, current_model, default_model, apply_fn, reset_fn, status_id, color_class, tooltip) %}
+{% from 'partials/_model_icon.html' import cloud_icon %}
+<div class="model-selector {{ color_class }}">
+    <h4 style="display: flex; align-items: center; gap: 6px;">🤖 {{ layer_label }}<span class="info-icon" data-tooltip="{{ tooltip }}">i</span></h4>
+    <select id="{{ select_id }}" class="model-select">
+        {% for model in model_list %}
+        <option value="{{model}}" {% if model == current_model %}selected{% endif %}>{{ cloud_icon(model) }}{{model}}</option>
+        {% endfor %}
+    </select>
+    <div class="model-buttons">
+        <button class="model-btn model-btn-apply" onclick="{{ apply_fn }}()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Apply</button>
+        <button class="model-btn model-btn-reset" onclick="{{ reset_fn }}()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Reset</button>
+    </div>
+    <div id="{{ status_id }}" class="model-status default">
+        {% if current_model != default_model %}
+        Using custom model: {{current_model}}
+        {% else %}
+        Using default model: {{current_model}}
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}

@@ -1,0 +1,11 @@
+{# Logo badge partial - accepts optional size (default 180), font_size (default 2.2rem), and extra_style #}
+{% set badge_size = badge_size|default(180) %}
+{% set badge_font_size = badge_font_size|default('2.2rem') %}
+{% set badge_extra_style = badge_extra_style|default('') %}
+<div style="width: {{ badge_size }}px; height: {{ badge_size }}px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; {% if badge_size == 180 %}margin: 0 auto;{% endif %} box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3); border: 3px solid rgba(255, 255, 255, 0.2); animation: pulse 3s ease-in-out infinite; {{ badge_extra_style }}">
+    {% if badge_size >= 180 %}
+    <h2 style="font-family: 'Dancing Script', cursive; color: #ffffff; margin: 0; font-size: {{ badge_font_size }}; font-weight: 700; text-shadow: 0 4px 20px rgba(0,0,0,0.2); letter-spacing: -0.5px;">LLM🔍InSights</h2>
+    {% else %}
+    <div style="font-family: 'Dancing Script', cursive; color: #ffffff; font-size: {{ badge_font_size }}; font-weight: 700; text-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: center; letter-spacing: -0.5px;">LLM🔍InSights</div>
+    {% endif %}
+</div>

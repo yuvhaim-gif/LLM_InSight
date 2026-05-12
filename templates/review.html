@@ -1,13 +1,9 @@
 <!DOCTYPE html>
     <html lang="en">
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        {% include 'partials/_head_common.html' %}
         <title>LLM🔍InSights - Review Chats</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' font-size='90' dominant-baseline='middle' text-anchor='middle'>🎩</text></svg>">
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-        <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+        {% include 'partials/_head_charts.html' %}
         <link rel="stylesheet" href="{{ url_for('static', filename='css/review.css') }}">
 
     </head>
@@ -16,9 +12,9 @@
             <div style="margin-bottom: 20px;">
                 <a href="/" class="back-button" style="margin-bottom: 0; position: fixed; top: 20px; left: 20px; z-index: 1000;">← Back to Main 🎯</a>
             </div>
-            <div style="position: fixed; top: 20px; right: 20px; z-index: 1000; width: 140px; height: 140px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3); border: 3px solid rgba(255, 255, 255, 0.2); animation: pulse 3s ease-in-out infinite;">
-                <div style="font-family: 'Dancing Script', cursive; color: #ffffff; font-size: 1.8rem; font-weight: 700; text-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: center; letter-spacing: -0.5px;">LLM🔍InSights</div>
-            </div>
+            {% with badge_size=140, badge_font_size='1.8rem', badge_extra_style='position: fixed; top: 20px; right: 20px; z-index: 1000;' %}
+            {% include 'partials/_logo_badge.html' %}
+            {% endwith %}
             <div class="header">
                 <h1>📁 Review History</h1>
                 <p>View and load your previous chat sessions</p>
@@ -52,16 +48,9 @@
             </div>
         </div>
 
-        <div id="deeperAnalysisModal" class="deeper-analysis-modal">
-            <div class="deeper-analysis-content">
-                <div class="deeper-analysis-header">
-                    <h2>📊 Deeper Analysis</h2>
-                    <button class="deeper-analysis-close" onclick="closeDeeperAnalysisModal()">×</button>
-                </div>
-                <div class="deeper-analysis-body" id="deeperAnalysisBody">
-                </div>
-            </div>
-        </div>
+        {% with modal_title='📊 Deeper Analysis', modal_placeholder='' %}
+        {% include 'partials/_deeper_analysis_modal.html' %}
+        {% endwith %}
 
         <script src="{{ url_for('static', filename='js/shared/utils.js') }}"></script>
         <script src="{{ url_for('static', filename='js/shared/chart-helpers.js') }}"></script>
@@ -73,8 +62,6 @@
         <script src="{{ url_for('static', filename='js/review/modals.js') }}"></script>
         <script src="{{ url_for('static', filename='js/review/init.js') }}"></script>
 
-        <div class="footer">
-            <span class="not-production">⚠️ NOT for production, Demo only</span>. <span style="color: white;">⚠️ All rights reserved to Yuval Haim.</span>
-        </div>
+        {% include 'partials/_footer.html' %}
     </body>
     </html>

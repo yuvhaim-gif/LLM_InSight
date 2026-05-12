@@ -389,6 +389,20 @@ Layer 1 entries add: `prompt`, `layer1_reply`. Layer 3 entries add: `grade`, `ov
 
 ## Frontend Integration
 
+### Template Structure
+
+All four page templates (`main.html`, `review.html`, `config_graders.html`, `login.html`) use shared Jinja2 partials from `templates/partials/`:
+
+- **`_head_common.html`** — charset, viewport meta, favicon SVG, Dancing Script font, `shared.css` link. Included in every template's `<head>`.
+- **`_head_charts.html`** — Chart.js and datalabels CDN scripts. Included in `main.html` and `review.html`.
+- **`_footer.html`** — footer div with production warning and rights notice. Included at the bottom of every template.
+- **`_logo_badge.html`** — gradient circle brand badge. Accepts `badge_size` (default 180), `badge_font_size` (default 2.2rem), and `badge_extra_style` via `{% with %}`. Used in main (header 180px, processing 140px), review (140px fixed), config_graders (140px fixed), and login (via `.logo-circle` CSS class).
+- **`_deeper_analysis_modal.html`** — deeper analysis modal markup. Accepts `modal_title` and `modal_placeholder`. Used in `main.html` and `review.html`.
+- **`_model_icon.html`** — Jinja macro `cloud_icon(model)` that emits ☁️ for cloud-provider models. Used in model selector blocks and advanced sidebar.
+- **`_model_selector.html`** — Jinja macro `model_selector(layer_label, select_id, model_list, current_model, default_model, apply_fn, reset_fn, status_id, color_class, tooltip)` for sidebar model selector blocks. Used 4 times in `main.html`.
+
+CSS load order: `shared.css` (via `_head_common.html`) → page-specific CSS. This ensures page-specific rules override shared base styles.
+
 ### Main Page (`main.html` + `main.js`)
 
 #### Selectors and Controls
@@ -420,7 +434,7 @@ Layer 1 entries add: `prompt`, `layer1_reply`. Layer 3 entries add: `grade`, `ov
   - Token Usage & Runtime Analysis: stacked bar chart (input/output tokens per model per iteration) and bar chart (Layer 1A vs 1B runtimes per iteration). Token chart only appears when token data is available.
   - Individual Grading Key Analysis: one bar chart per grading key (Layer 1A vs 1B scores per iteration).
 - **Console Output**: full raw processing log.
-- Charts via Chart.js with datalabels plugin.
+- Charts via Chart.js with datalabels plugin (loaded via `_head_charts.html` partial).
 
 ### Config Graders Page (`config_graders.html` + `config_graders.js`)
 
@@ -452,10 +466,12 @@ Layer 1 entries add: `prompt`, `layer1_reply`. Layer 3 entries add: `grade`, `ov
 
 ### Login Page (`login.html`)
 
+- Uses `shared.css` for base styles (reset, body gradient, star overlay, keyframes, logo-circle, footer) with inline `<style>` overrides for login-specific body (scroll attachment, flex centering, overflow hidden), body::before (absolute positioning, 200% size, float animation), and slideUp (with scale transform).
+- Login-specific styles (`.login-container`, `.form-group`, `.login-btn`, `.error-message`, media queries) remain inline.
 - Animated background with gradient and floating elements.
 - Circular login container with username/password fields.
 - Error message display with shake animation on invalid credentials.
-- Footer with demo/rights notice.
+- Footer with demo/rights notice via `_footer.html` partial.
 
 ## References
 

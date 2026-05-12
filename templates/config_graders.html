@@ -1,11 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% include 'partials/_head_common.html' %}
     <title>LLM🔍InSights - Config Graders</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' font-size='90' dominant-baseline='middle' text-anchor='middle'>🎩</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/config_graders.css') }}">
 </head>
 <body>
@@ -15,9 +12,9 @@
         <a href="/" class="back-button" style="position: fixed; top: 20px; left: 20px; z-index: 1000;">← Back to Main 🎯</a>
     </div>
 
-    <div style="position: fixed; top: 20px; right: 20px; z-index: 1000; width: 140px; height: 140px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3); border: 3px solid rgba(255, 255, 255, 0.2); animation: pulse 3s ease-in-out infinite;">
-        <div style="font-family: 'Dancing Script', cursive; color: #ffffff; font-size: 1.8rem; font-weight: 700; text-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: center; letter-spacing: -0.5px;">LLM🔍InSights</div>
-    </div>
+    {% with badge_size=140, badge_font_size='1.8rem', badge_extra_style='position: fixed; top: 20px; right: 20px; z-index: 1000;' %}
+    {% include 'partials/_logo_badge.html' %}
+    {% endwith %}
 
     <div class="header">
         <h1>⚙️ Configure Grader Settings</h1>
@@ -83,9 +80,7 @@
     </div>
 </div>
 
-<div class="footer">
-    <span class="not-production">⚠️ NOT for production, Demo only</span>. <span style="color: white;">⚠️ All rights reserved to Yuval Haim.</span>
-</div>
+{% include 'partials/_footer.html' %}
 
 <script>
 const AVAILABLE_GRADER_MODELS = {{ available_grader_models|tojson }};

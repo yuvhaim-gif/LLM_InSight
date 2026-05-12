@@ -1,0 +1,11 @@
+<div id="deeperAnalysisModal" class="deeper-analysis-modal">
+    <div class="deeper-analysis-content">
+        <div class="deeper-analysis-header">
+            <h2>{{ modal_title|default('Deeper Analysis') }}</h2>
+            <button class="deeper-analysis-close" onclick="closeDeeperAnalysisModal()">×</button>
+        </div>
+        <div class="deeper-analysis-body" id="deeperAnalysisBody">
+            {{ modal_placeholder|default('<p>Loading analysis data...</p>') }}
+        </div>
+    </div>
+</div>

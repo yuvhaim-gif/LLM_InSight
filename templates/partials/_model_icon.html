@@ -1,0 +1,1 @@
+{% macro cloud_icon(model) %}{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{% endmacro %}

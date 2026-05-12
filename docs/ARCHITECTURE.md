@@ -27,6 +27,8 @@ How the demo is structured — components, data flow, and persistence. The syste
 | Validation | `utils/validation.py` | Input/integer/float/model validators |
 | Runtime state | `state.py` | In-memory: iteration counter, processing flag, model counter, GLM cache, load lock, cancel event |
 | Frontend JS | `static/js/shared/` (utils, chart-helpers, deeper-analysis), `static/js/main/` (weights, filters, toggles, models, grader-settings, download, upload, processing, advanced, init), `static/js/review/` (state, chat-list, prompt-view, prompt-chart, modals, init), `static/js/config_graders.js` | Modular scripts loaded per page; shared modules provide common utilities and the Deeper Analysis modal |
+| Frontend CSS | `static/css/shared.css` (base reset, body gradient, star overlay, keyframes, footer, logo-circle, deeper-analysis modal), `static/css/main.css`, `static/css/review.css`, `static/css/config_graders.css` | Shared base styles loaded first; page-specific files contain only overrides and unique rules |
+| Template partials | `templates/partials/_head_common.html` (meta, favicon, font, shared.css), `_head_charts.html` (Chart.js CDN), `_footer.html`, `_logo_badge.html` (parameterized size), `_deeper_analysis_modal.html`, `_model_icon.html` (cloud icon macro), `_model_selector.html` (sidebar selector macro) | Jinja2 includes and macros eliminating repeated HTML across the 4 page templates |
 
 ## Provider Routing
 

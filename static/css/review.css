@@ -1,8 +1,4 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #050209 0%, #0f0620 25%, #1a0f2e 50%, #0d0620 75%, #050209 100%) fixed; background-attachment: fixed; min-height: 100vh; padding: 20px; position: relative; }
-            body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px); background-size: 50px 50px; pointer-events: none; z-index: 0; }
-            @keyframes floatBg { 0%, 100% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-20px) rotate(180deg); } }
-            @keyframes pulse { 0%, 100% { box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3); } 50% { box-shadow: 0 15px 50px rgba(102, 126, 234, 0.6); } }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; }
             .container { max-width: 1600px; margin: 0 auto; position: relative; z-index: 1; }
             .header { color: white; margin-bottom: 30px; text-align: center; }
             .header h1 { font-size: 2.5em; margin-bottom: 10px; }
@@ -57,19 +53,17 @@
             .iteration-score-item { text-align: center; padding: 10px; background: white; border-radius: 5px; border-left: 4px solid #667eea; }
             .iteration-score-label { font-size: 0.85em; color: #666; font-weight: 600; margin-bottom: 5px; }
             .iteration-score-value { font-size: 1.3em; color: #333; font-weight: 700; }
-            .deeper-analysis-modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); overflow-y: auto; }
+            .deeper-analysis-modal { z-index: 1001; background-color: rgba(0, 0, 0, 0.7); overflow-y: auto; backdrop-filter: none; animation: none; justify-content: center; align-items: flex-start; }
             .deeper-analysis-modal.show { display: flex; }
-            .deeper-analysis-modal { justify-content: center; align-items: flex-start; padding: 20px; }
-            .deeper-analysis-content { background: white; border-radius: 15px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 1400px; width: 100%; max-height: 90vh; overflow-y: auto; }
-            .deeper-analysis-header { display: flex; justify-content: space-between; align-items: center; padding: 30px; border-bottom: 2px solid #eee; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px 15px 0 0; }
-            .deeper-analysis-header h2 { margin: 0; font-size: 1.8rem; font-weight: 700; }
-            .deeper-analysis-close { background: none; border: none; font-size: 2.5rem; color: white; cursor: pointer; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
-            .deeper-analysis-close:hover { opacity: 0.8; }
+            .deeper-analysis-content { border-radius: 15px; width: 100%; animation: none; }
+            .deeper-analysis-header { padding: 30px; border-bottom: 2px solid #eee; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px 15px 0 0; }
+            .deeper-analysis-header h2 { color: white; font-weight: 700; }
+            .deeper-analysis-close { font-size: 2.5rem; color: white; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: none; }
+            .deeper-analysis-close:hover { opacity: 0.8; transform: none; }
             .deeper-analysis-body { padding: 30px; }
             .deeper-analysis-section { margin-bottom: 40px; }
-            .deeper-analysis-section h3 { color: #2d3436; margin-bottom: 20px; font-size: 1.3rem; font-weight: 700; }
-            .deeper-analysis-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 30px; }
-            .deeper-analysis-chart-container { background: linear-gradient(135deg, rgba(255, 255, 255, 0.97) 0%, rgba(248, 249, 250, 0.95) 100%); border-radius: 12px; padding: 20px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); border: 1px solid rgba(227, 232, 237, 0.5); }
+            .deeper-analysis-section h3 { font-size: 1.3rem; font-weight: 700; padding-bottom: 0; border-bottom: none; }
+            .deeper-analysis-charts { gap: 30px; }
+            .deeper-analysis-chart-container { padding: 20px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); }
             .deeper-analysis-chart-container canvas { max-height: 300px; min-height: 250px; }
-            .footer { text-align: center; padding: 20px; color: rgba(255, 255, 255, 0.8); font-size: 0.85rem; margin-top: 20px; }
-            .footer .not-production { color: #ff6b6b; font-weight: bold; }
+            .footer { margin-top: 20px; }

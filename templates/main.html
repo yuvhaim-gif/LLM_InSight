@@ -1,13 +1,9 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+{% include 'partials/_head_common.html' %}
 <title>LLM🔍InSights</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' font-size='90' dominant-baseline='middle' text-anchor='middle'>🎩</text></svg>">
-<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+{% include 'partials/_head_charts.html' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 
 </head>
@@ -24,17 +20,7 @@
 </div>
 
 <!-- Deeper Analysis Modal -->
-<div id="deeperAnalysisModal" class="deeper-analysis-modal">
-    <div class="deeper-analysis-content">
-        <div class="deeper-analysis-header">
-            <h2>Deeper Analysis</h2>
-            <button class="deeper-analysis-close" onclick="closeDeeperAnalysisModal()">×</button>
-        </div>
-        <div class="deeper-analysis-body" id="deeperAnalysisBody">
-            <p>Loading analysis data...</p>
-        </div>
-    </div>
-</div>
+{% include 'partials/_deeper_analysis_modal.html' %}
 
 <div class="container">
     <!-- Top Right Section: Logout & User Info -->
@@ -88,9 +74,9 @@
     
     <!-- Header with LLM🔍InSights Box -->
     <div class="header">
-        <div style="width: 180px; height: 180px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3); border: 3px solid rgba(255, 255, 255, 0.2); animation: pulse 3s ease-in-out infinite;">
-            <h2 style="font-family: 'Dancing Script', cursive; color: #ffffff; margin: 0; font-size: 2.2rem; font-weight: 700; text-shadow: 0 4px 20px rgba(0,0,0,0.2); letter-spacing: -0.5px;">LLM🔍InSights</h2>
-        </div>
+        {% with badge_size=180, badge_font_size='2.2rem' %}
+        {% include 'partials/_logo_badge.html' %}
+        {% endwith %}
     </div>
 
     <div class="main-layout">
@@ -583,85 +569,14 @@
             </button>
             <p style="font-size: 0.8rem; margin-bottom: 18px; line-height: 1.4; text-align: center;"><span style="color: #4caf50;"><b>FAST</b>   </span>, <span style="color: #ffc107;"><b>MIDDLE</b>   </span>, <span style="color: #ff9800;"><b>SLOWER</b>   </span>, <span style="color: #f44336;"><b>SLOW</b></span>.</p>
             
-            <div class="model-selector model-selector-layer1a">
-                <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Answer Model 1<span class="info-icon" data-tooltip="First model to answer your prompt">i</span></h4>
-                <select id="modelSelectA" class="model-select">
-                    {% for model in available_layer1a_models %}
-                    <option value="{{model}}" {% if model == current_layer1a_model %}selected{% endif %}>{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
-                    {% endfor %}
-                </select>
-                <div class="model-buttons">
-                    <button class="model-btn model-btn-apply" onclick="applyModelA()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Apply</button>
-                    <button class="model-btn model-btn-reset" onclick="resetModelA()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Reset</button>
-                </div>
-                <div id="modelStatusA" class="model-status default">
-                    {% if current_layer1a_model != default_layer1a_model %}
-                    Using custom model: {{current_layer1a_model}}
-                    {% else %}
-                    Using default model: {{current_layer1a_model}}
-                    {% endif %}
-                </div>
-            </div>
+            {% from 'partials/_model_selector.html' import model_selector %}
+            {{ model_selector('Answer Model 1', 'modelSelectA', available_layer1a_models, current_layer1a_model, default_layer1a_model, 'applyModelA', 'resetModelA', 'modelStatusA', 'model-selector-layer1a', 'First model to answer your prompt') }}
 
-            <div class="model-selector model-selector-layer1b">
-                <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Answer Model 2<span class="info-icon" data-tooltip="Second model to answer your prompt">i</span></h4>
-                <select id="modelSelectB" class="model-select">
-                    {% for model in available_layer1b_models %}
-                    <option value="{{model}}" {% if model == current_layer1b_model %}selected{% endif %}>{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
-                    {% endfor %}
-                </select>
-                <div class="model-buttons">
-                    <button class="model-btn model-btn-apply" onclick="applyModelB()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Apply</button>
-                    <button class="model-btn model-btn-reset" onclick="resetModelB()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Reset</button>
-                </div>
-                <div id="modelStatusB" class="model-status default">
-                    {% if current_layer1b_model != default_layer1b_model %}
-                    Using custom model: {{current_layer1b_model}}
-                    {% else %}
-                    Using default model: {{current_layer1b_model}}
-                    {% endif %}
-                </div>
-            </div>
+            {{ model_selector('Answer Model 2', 'modelSelectB', available_layer1b_models, current_layer1b_model, default_layer1b_model, 'applyModelB', 'resetModelB', 'modelStatusB', 'model-selector-layer1b', 'Second model to answer your prompt') }}
 
-            <div class="model-selector model-selector-layer2">
-                <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Prompt Model<span class="info-icon" data-tooltip="Enhances the prompt between iterations">i</span></h4>
-                <select id="modelSelectLayer2" class="model-select">
-                    {% for model in available_layer2_models %}
-                    <option value="{{model}}" {% if model == current_layer2_model %}selected{% endif %}>{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
-                    {% endfor %}
-                </select>
-                <div class="model-buttons">
-                    <button class="model-btn model-btn-apply" onclick="applyModelLayer2()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Apply</button>
-                    <button class="model-btn model-btn-reset" onclick="resetModelLayer2()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Reset</button>
-                </div>
-                <div id="modelStatusLayer2" class="model-status default">
-                    {% if current_layer2_model != default_layer2_model %}
-                    Using custom model: {{current_layer2_model}}
-                    {% else %}
-                    Using default model: {{current_layer2_model}}
-                    {% endif %}
-                </div>
-            </div>
+            {{ model_selector('Prompt Model', 'modelSelectLayer2', available_layer2_models, current_layer2_model, default_layer2_model, 'applyModelLayer2', 'resetModelLayer2', 'modelStatusLayer2', 'model-selector-layer2', 'Enhances the prompt between iterations') }}
 
-            <div class="model-selector model-selector-layer0">
-                <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Idea Making Model<span class="info-icon" data-tooltip="Generates alternative answer ideas">i</span></h4>
-                <select id="modelSelectLayer0" class="model-select">
-                    {% for model in available_layer0_models %}
-                    <option value="{{model}}" {% if model == current_layer0_model %}selected{% endif %}>{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
-                    {% endfor %}
-                </select>
-                <div class="model-buttons">
-                    <button class="model-btn model-btn-apply" onclick="applyModelLayer0()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Apply</button>
-                    <button class="model-btn model-btn-reset" onclick="resetModelLayer0()" style="display: flex; align-items: center; gap: 4px; justify-content: center;">Reset</button>
-                </div>
-                <div id="modelStatusLayer0" class="model-status default">
-                    {% if current_layer0_model != default_layer0_model %}
-                    Using custom model: {{current_layer0_model}}
-                    {% else %}
-                    Using default model: {{current_layer0_model}}
-                    {% endif %}
-                </div>
-            </div>
+            {{ model_selector('Idea Making Model', 'modelSelectLayer0', available_layer0_models, current_layer0_model, default_layer0_model, 'applyModelLayer0', 'resetModelLayer0', 'modelStatusLayer0', 'model-selector-layer0', 'Generates alternative answer ideas') }}
 
 
 
@@ -674,6 +589,7 @@
                 Set models per iteration or leave blank for defaults. Click Save.
             </p>
             
+            {% from 'partials/_model_icon.html' import cloud_icon %}
             <div style="margin-bottom: 22px; background: linear-gradient(135deg, rgba(100, 150, 200, 0.06) 0%, rgba(100, 150, 200, 0.09) 100%); padding: 12px; border-radius: 8px; border-left: 4px solid #6b96c8;">
                 <h4 style="display: flex; align-items: center; gap: 6px;">🤖 Answer model 1</h4>
                 {% for i in range(1, max_iterations|int + 1) %}
@@ -682,7 +598,7 @@
                     <select class="advanced-model-select" data-layer="a" data-iteration="{{i}}">
                         <option value="">Default</option>
                         {% for model in available_layer1a_models %}
-                        <option value="{{model}}">{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
+                        <option value="{{model}}">{{ cloud_icon(model) }}{{model}}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -697,7 +613,7 @@
                     <select class="advanced-model-select" data-layer="b" data-iteration="{{i}}">
                         <option value="">Default</option>
                         {% for model in available_layer1b_models %}
-                        <option value="{{model}}">{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
+                        <option value="{{model}}">{{ cloud_icon(model) }}{{model}}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -717,7 +633,7 @@
                     <select class="advanced-model-select" data-layer="layer2" data-iteration="{{i}}">
                         <option value="">Default</option>
                         {% for model in available_layer2_models %}
-                        <option value="{{model}}">{% if 'gemini-' in model %}☁️ {% elif 'mistral-small-' in model or 'magistral-small-' in model or 'voxtral-mini-' in model or 'open-mistral-' in model %}☁️ {% endif %}{{model}}</option>
+                        <option value="{{model}}">{{ cloud_icon(model) }}{{model}}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -739,9 +655,9 @@
 <!-- Processing Overlay -->
 <div class="processing-overlay" id="processingOverlay" style="display: none;">
     <div class="processing-content">
-        <div style="width: 140px; height: 140px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto 30px; box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3); border: 3px solid rgba(255, 255, 255, 0.2); animation: pulse 3s ease-in-out infinite;">
-            <div style="font-family: 'Dancing Script', cursive; color: #ffffff; font-size: 1.8rem; font-weight: 700; text-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: center; letter-spacing: -0.5px;">LLM🔍InSights</div>
-        </div>
+        {% with badge_size=140, badge_font_size='1.8rem', badge_extra_style='margin: 0 auto 30px;' %}
+        {% include 'partials/_logo_badge.html' %}
+        {% endwith %}
         <h2 style="color: #2D004D;">🔄 Processing Analysis</h2>
         <p>Running iterative analysis on your prompt...</p>
         <img src="/static/loading-red-spot.gif" class="spinner" alt="Loading" />
@@ -774,9 +690,7 @@
     </div>
 </div>
 
-<div class="footer">
-    <span class="not-production">⚠️ NOT for production, Demo only</span>. <span style="color: white;">⚠️ All rights reserved to Yuval Haim.</span>
-</div>
+{% include 'partials/_footer.html' %}
 
 <script>
 const iterationHistory = {{ iteration_history|tojson }};
