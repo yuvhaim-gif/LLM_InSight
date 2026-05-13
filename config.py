@@ -53,6 +53,7 @@ BACKUP_DIR = os.path.join(BASE_DIR, "backup")
 ITERATION_HISTORY_FILE = os.path.join(BASE_DIR, "iteration_history.json")
 CONSOLE_OUTPUT_FILE = os.path.join(BASE_DIR, "console_output.txt")
 DOWNLOADS_DIR = os.path.join(os.path.expanduser("~"), "Downloads")
+STATE_DB_PATH = os.path.join(BASE_DIR, "runtime_state.db")
 
 _CORE_MODELS = [
     "gemini-2.5-flash",

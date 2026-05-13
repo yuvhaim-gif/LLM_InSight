@@ -6,7 +6,7 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
 
 - Route URLs and payload shapes used by frontend JS modules (`static/js/main/`, `static/js/review/`, `static/js/shared/`, `config_graders.js`).
 - Session key names used across backend and frontend handoff.
-- Runtime file names and paths: `ledger.jsonl`, `iteration_history.json`, `best_best_layer1.json`, `console_output.txt`.
+- Runtime file names and paths: `ledger.jsonl`, `iteration_history.json`, `best_best_layer1.json`, `console_output.txt`, `runtime_state.db`.
 - Backup payload version `2.0` and key layout (including `grader_setting_name` in `session_data`).
 - Layer 3 grader category system: 1-8 configurable categories per grader setting, loaded from `graderdata/*.jsonl`.
 - Grader setting JSONL file format: one JSON object per line with `key`, `rubric`, `grader`, `weight` fields.
@@ -40,7 +40,8 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
 - Frontend JS is split into modular files under `static/js/shared/`, `static/js/main/`, and `static/js/review/`. The Deeper Analysis modal code is unified in `shared/deeper-analysis.js` (used by both main and review pages). All functions remain at global scope for compatibility with inline `onclick` handlers in templates. Script load order in templates preserves dependency chains: shared modules → domain modules → init.
 - Credentials are loaded from `.env` via `secrets_config.py`. Only `APP_USER`, `APP_PASS`, and `FLASK_SECRET` are required (missing these causes exit). Provider keys (`MISTRAL_API_KEY`, `GOOGLE_API_KEY`, `LANGCHAIN_API_KEY`) are optional — missing ones print a note at startup and the corresponding providers return errors when called. `LANGCHAIN_PROJECT` defaults to `"llminsight"` if unset.
 - `utils/validation.py` provides input/integer/float/model validators.
-- GLM model cache (`state._glm_model_cache`) is keyed by HuggingFace model ID, preloaded at startup, unloaded on exit/process signal. Thread-safe via double-checked locking (`state._glm_load_lock`), cancellable via `state._glm_cancel_load`.
+- GLM model cache (`state._glm_model_cache`) is keyed by HuggingFace model ID, preloaded at startup, unloaded on exit/process signal. Thread-safe via double-checked locking (`state._glm_load_lock`), cancellable via `state._glm_cancel_load`. GLM cache/lock/cancel remain in-memory globals (not in SQLite) since they hold non-serializable Python objects.
+- Per-session runtime state (iteration counter, processing flag, models executed) is stored in SQLite (`runtime_state.db`) via `db.py`, accessed through accessor functions in `state.py`. Session isolation uses a UUID stored in `session['_state_session_id']`. Iteration change events remain in-memory as a per-session `threading.Event` dict.
 - `/iteration-wait` mirrors `/iteration` with no blocking/polling behavior.
 - Review parsing includes compatibility branches for older backup formats.
 - Layer 2 receives weights and uses them as optimization priorities to focus prompt improvement on weak high-weight areas.
@@ -84,6 +85,10 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
 - Multi-prompt sessions carry best-best context forward correctly.
 - All inline `onclick`/`onchange` handlers in templates and dynamically-generated HTML resolve to globally-scoped functions in loaded modules.
 - Deeper Analysis modal works on both main page (reads sidebar weights) and review page (receives saved weights from chat data).
+- `runtime_state.db` is created automatically on first startup via `init_db()`.
+- Per-session state isolation: two simultaneous browser sessions do not interfere with each other's iteration counters or processing flags.
+- Login, logout, and clear chat reset the session's state DB row before clearing the Flask session.
+- Server restarts cleanly: old DB rows are cleaned up at startup (24h) and exit (all rows).
 
 ## References
 

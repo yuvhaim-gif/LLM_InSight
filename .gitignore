@@ -20,6 +20,7 @@ ledger.jsonl
 best_best_layer1.json
 iteration_history.json
 console_output.txt
+runtime_state.db
 
 # Backups (large session data)
 backup/

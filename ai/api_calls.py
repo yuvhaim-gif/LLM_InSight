@@ -95,7 +95,7 @@ def call_ollama(model: str, messages: List[dict], timeout: int = 300) -> Dict:
         return _make_response(result["error"], tool="ollama")
     
     if result["content"] is not None:
-        state.models_executed += 1
+        state.increment_models_executed()
         return _make_response(result["content"], tool="ollama", input_tokens=result["input_tokens"], output_tokens=result["output_tokens"])
     
     if result["completed"]:
@@ -262,7 +262,7 @@ def call_google_gemini(messages: List[dict], model: str = "gemini-2.5-flash", ti
         return _make_response(result["error"], tool="gemini")
     
     if result["content"] is not None:
-        state.models_executed += 1
+        state.increment_models_executed()
         return _make_response(result["content"], tool="gemini", input_tokens=result["input_tokens"], output_tokens=result["output_tokens"])
     
     if result["completed"]:
@@ -361,7 +361,7 @@ def call_mistral(model: str, messages: List[dict], timeout: int = 300) -> Dict:
         return _make_response(result["error"], tool="mistral")
     
     if result["content"] is not None:
-        state.models_executed += 1
+        state.increment_models_executed()
         return _make_response(result["content"], tool="mistral", input_tokens=result["input_tokens"], output_tokens=result["output_tokens"])
     
     if result["completed"]:
@@ -560,7 +560,7 @@ def call_glm(model_name: str, messages: List[dict], timeout: int = 300) -> Dict:
         return _make_response(result["error"], tool="glm")
     
     if result["content"] is not None:
-        state.models_executed += 1
+        state.increment_models_executed()
         return _make_response(result["content"], tool="glm", input_tokens=result["input_tokens"], output_tokens=result["output_tokens"])
     
     if result["completed"]:

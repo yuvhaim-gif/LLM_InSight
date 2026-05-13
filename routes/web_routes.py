@@ -83,9 +83,9 @@ def index():
         session.modified = True
         
         if prompt:
-            state.is_processing = True
-            state.models_executed = 0
-            state.current_iteration_value = 1
+            state.set_is_processing(True)
+            state.set_models_executed(0)
+            state.set_current_iteration_value(1)
             
             prompt_history = session.get('prompt_history', [])
             
@@ -123,7 +123,7 @@ def index():
                 save_console_output(console_output)
             finally:
                 sys.stdout = original_stdout
-                state.is_processing = False
+                state.set_is_processing(False)
     
     iteration_history = get_iteration_history()
     

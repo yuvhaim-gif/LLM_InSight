@@ -45,15 +45,15 @@ def check_auth():
 
 @api_bp.route('/iteration', methods=['GET'])
 def get_iteration():
-    return jsonify({'iteration': state.current_iteration_value})
+    return jsonify({'iteration': state.get_current_iteration_value()})
 
 @api_bp.route('/iteration-wait', methods=['GET'])
 def wait_for_iteration():
-    return jsonify({'iteration': state.current_iteration_value})
+    return jsonify({'iteration': state.get_current_iteration_value()})
 
 @api_bp.route('/is-processing', methods=['GET'])
 def check_processing():
-    return jsonify({'processing': state.is_processing, 'models_executed': state.models_executed})
+    return jsonify({'processing': state.get_is_processing(), 'models_executed': state.get_models_executed()})
 
 @api_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -88,6 +88,7 @@ def login():
             set_large_session_data('advanced_layer1a_models', {})
             set_large_session_data('advanced_layer1b_models', {})
             set_large_session_data('advanced_layer2_models', {})
+            state.reset_session_state()
             return redirect(url_for('main.index'))
         return render_template_string(LOGIN_TEMPLATE + '<div class="error-message">Invalid credentials</div>')
     return render_template_string(LOGIN_TEMPLATE)
@@ -104,6 +105,7 @@ def logout():
     clear_file(BESTBEST_CACHE)
     clear_file(ITERATION_HISTORY_FILE)
     clear_file(CONSOLE_OUTPUT_FILE)
+    state.reset_session_state()
     session.clear()
     return redirect(url_for('api.login'))
 
@@ -128,6 +130,7 @@ def clear_chat():
     clear_file(ITERATION_HISTORY_FILE)
     clear_file(CONSOLE_OUTPUT_FILE)
     
+    state.reset_session_state()
     session.clear()
     session['logged_in'] = True
     session['user'] = ADMIN_USER

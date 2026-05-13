@@ -162,9 +162,11 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
     best_score_so_far = 0
     all_tools_token_usage = {}
 
+    session_id = state._get_session_id()
+
     for iteration_count in range(1, max_iterations + 1):
-        state.current_iteration_value = iteration_count
-        state.iteration_change_event.set()
+        state.set_current_iteration_value(iteration_count, session_id)
+        state.get_iteration_event(session_id).set()
         
         iteration_layer1a_model = adv_layer1a.get(str(iteration_count)) or default_layer1a
         iteration_layer1b_model = adv_layer1b.get(str(iteration_count)) or default_layer1b

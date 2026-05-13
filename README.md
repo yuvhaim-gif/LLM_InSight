@@ -269,7 +269,7 @@ Edit the `DEFAULT_LAYER*` variables and `LAYER3_GRADER_MODELS` in `config.py`. T
 ## Persistence
 
 - **Session**: auth, models, weights, toggles, prompt history, advanced maps, active grader setting name.
-- **Files**: `ledger.jsonl` (append-only events), `iteration_history.json`, `best_best_layer1.json`, `console_output.txt`, `backup/` (timestamped copies), `graderdata/` (JSONL grader settings).
+- **Files**: `ledger.jsonl` (append-only events), `iteration_history.json`, `best_best_layer1.json`, `console_output.txt`, `runtime_state.db` (per-session state), `backup/` (timestamped copies), `graderdata/` (JSONL grader settings).
 - **Browser**: `localStorage` (domain filter, weight preset, system type), `sessionStorage` (review-to-main handoff).
 - **Lifecycle**: startup, login, clear-chat, logout, exit, window close, and process signals each back up runtime files and then clear a subset of them.
 
@@ -288,7 +288,8 @@ LangSmith/LangChain tracing on all AI layers via `@traceable` decorators. Requir
 - **Routes**: `routes/web_routes.py`, `routes/api_routes.py`, `routes/review_routes.py`
 - **AI pipeline**: `ai/iterative_loop.py`, `ai/layer0.py`, `ai/layer1.py`, `ai/layer2.py`, `ai/layer3.py`, `ai/api_calls.py`
 - **Data models**: `models.py` (Pydantic: `Layer2Response`, `Layer2Critique`)
-- **Utilities**: `utils/session.py`, `utils/file_io.py`, `utils/common.py`, `utils/text_processing.py`, `utils/validation.py`, `utils/grader_settings.py`, `state.py`
+- **Utilities**: `utils/session.py`, `utils/file_io.py`, `utils/common.py`, `utils/text_processing.py`, `utils/validation.py`, `utils/grader_settings.py`
+- **State**: `state.py` (hybrid: per-session state via SQLite, GLM cache in-memory), `db.py` (SQLite backend for per-session runtime state)
 - **Frontend**: `templates/` (login, main, review, config_graders), `templates/partials/` (shared Jinja2 includes and macros), `static/css/shared.css` (common base styles), `static/css/` (page-specific overrides), `static/js/`
 
 ## Documentation

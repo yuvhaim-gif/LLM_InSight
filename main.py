@@ -11,6 +11,7 @@ from flask import Flask
 from config import FLASK_SECRET, PORT, SSL_CERT_PATH, SSL_KEY_PATH, BACKUP_DIR
 from config import LEDGER_FILE, BESTBEST_CACHE, ITERATION_HISTORY_FILE, CONSOLE_OUTPUT_FILE
 from utils.file_io import backup_file, backup_chat_json, clear_file
+from db import init_db, cleanup_old_sessions
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
@@ -43,6 +44,8 @@ def startup_cleanup():
     if num_threads > 1:
         print(f"Found {num_threads} active threads at startup (expected ~1 main thread)")
     
+    init_db()
+    cleanup_old_sessions(max_age_hours=24)
     print(f"Startup cleanup completed - ready to process prompts (Total threads: {num_threads})")
 
 def exit_backup():
@@ -59,6 +62,7 @@ def exit_backup():
     clear_file(LEDGER_FILE)
     clear_file(BESTBEST_CACHE)
     clear_file(ITERATION_HISTORY_FILE)
+    cleanup_old_sessions(max_age_hours=0)
     print("Exit backup completed")
 
 from routes import register_routes

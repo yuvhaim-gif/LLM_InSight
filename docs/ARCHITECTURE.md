@@ -25,7 +25,8 @@ How the demo is structured — components, data flow, and persistence. The syste
 | Text processing | `utils/text_processing.py` | Console parsing, similarity, deduplication, answer extraction |
 | Common utilities | `utils/common.py` | Scoring, JSON parsing, error detection, `@traceable` wrapper |
 | Validation | `utils/validation.py` | Input/integer/float/model validators |
-| Runtime state | `state.py` | In-memory: iteration counter, processing flag, model counter, GLM cache, load lock, cancel event |
+| State database | `db.py` | SQLite-backed per-session state (iteration counter, processing flag, model counter) with thread-safe access |
+| Runtime state | `state.py` | Hybrid state module: delegates per-session serializable state to SQLite via `db.py`, keeps GLM cache/lock/cancel in-memory |
 | Frontend JS | `static/js/shared/` (utils, chart-helpers, deeper-analysis), `static/js/main/` (weights, filters, toggles, models, grader-settings, download, upload, processing, advanced, init), `static/js/review/` (state, chat-list, prompt-view, prompt-chart, modals, init), `static/js/config_graders.js` | Modular scripts loaded per page; shared modules provide common utilities and the Deeper Analysis modal |
 | Frontend CSS | `static/css/shared.css` (base reset, body gradient, star overlay, keyframes, footer, logo-circle, deeper-analysis modal), `static/css/main.css`, `static/css/review.css`, `static/css/config_graders.css` | Shared base styles loaded first; page-specific files contain only overrides and unique rules |
 | Template partials | `templates/partials/_head_common.html` (meta, favicon, font, shared.css), `_head_charts.html` (Chart.js CDN), `_footer.html`, `_logo_badge.html` (parameterized size), `_deeper_analysis_modal.html`, `_model_icon.html` (cloud icon macro), `_model_selector.html` (sidebar selector macro) | Jinja2 includes and macros eliminating repeated HTML across the 4 page templates |
@@ -150,6 +151,7 @@ The Review page (`/review_chats`) serves as a log and deeper analysis tool:
 | `iteration_history.json` | Prompt-indexed iteration arrays with scores, models, runtimes, tokens, A/B results |
 | `best_best_layer1.json` | Current best/tied entries with prompt number and timestamp |
 | `console_output.txt` | Captured runtime console stream |
+| `runtime_state.db` | SQLite database storing per-session runtime state (iteration counter, processing flag, models executed). Auto-created on first startup, cleaned up on exit |
 | `backup/` | Timestamped copies created on lifecycle events |
 | `graderdata/` | JSONL grader setting files (key, rubric, grader, weight per line) |
 
@@ -164,11 +166,11 @@ The Review page (`/review_chats`) serves as a log and deeper analysis tool:
 
 | Event | Backs up | Clears |
 |---|---|---|
-| Startup | ledger, best-best, iteration history, console | ledger, best-best, iteration history |
-| Login | all files + chat JSON | console, ledger, best-best |
-| Clear Chat | all files + chat JSON | all four working files |
-| Logout | all files + chat JSON | all four working files |
-| Exit | all files + chat JSON | ledger, best-best, iteration history |
+| Startup | ledger, best-best, iteration history, console | ledger, best-best, iteration history. Init state DB, clean up old sessions |
+| Login | all files + chat JSON | console, ledger, best-best. Reset per-session state |
+| Clear Chat | all files + chat JSON | all four working files. Reset per-session state |
+| Logout | all files + chat JSON | all four working files. Reset per-session state |
+| Exit | all files + chat JSON | ledger, best-best, iteration history. Clean up all session state rows |
 | Window close | -- | -- (sends `/shutdown-notify` via `sendBeacon`) |
 | Signal (SIGINT/SIGTERM) | all files + chat JSON (via atexit) | ledger, best-best, iteration history |
 
