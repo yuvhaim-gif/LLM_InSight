@@ -1,5 +1,4 @@
 import threading
-import uuid
 import db
 
 _glm_model_cache = {}
@@ -8,6 +7,8 @@ _glm_cancel_load = threading.Event()
 
 _iteration_events = {}
 _iteration_events_lock = threading.Lock()
+
+_fallback_session_id = None
 
 
 def get_iteration_event(session_id=None):
@@ -22,15 +23,14 @@ def get_iteration_event(session_id=None):
 def _get_session_id():
     try:
         from flask import session as flask_session
-        sid = flask_session.get('_state_session_id')
-        if sid:
-            return sid
-        sid = str(uuid.uuid4())
-        flask_session['_state_session_id'] = sid
-        flask_session.modified = True
-        return sid
+        user = flask_session.get('user')
+        if user:
+            return f"user_{user}"
     except Exception:
-        return 'default'
+        pass
+    if _fallback_session_id:
+        return _fallback_session_id
+    return 'default'
 
 
 def get_current_iteration_value(session_id=None):

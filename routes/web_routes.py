@@ -83,6 +83,7 @@ def index():
         session.modified = True
         
         if prompt:
+            state._fallback_session_id = state._get_session_id()
             state.set_is_processing(True)
             state.set_models_executed(0)
             state.set_current_iteration_value(1)
@@ -124,6 +125,7 @@ def index():
             finally:
                 sys.stdout = original_stdout
                 state.set_is_processing(False)
+                state._fallback_session_id = None
     
     iteration_history = get_iteration_history()
     
