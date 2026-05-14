@@ -423,7 +423,7 @@ CSS load order: `shared.css` (via `_head_common.html`) → page-specific CSS. Th
 - **Break Target Grade**: input field, 1-100, default 100.
 - **Max Iterations**: input field, 1-5, default 5.
 - **Toggles**: Degradation Break, Change Prompt, Give Ideas, Last Best Answer Retention, Grade vs. Current/First Prompt.
-- **System type selector** (top-left corner): Simple Laptop / Good Laptop / Super Laptop. Filters model dropdowns by speed category — Simple shows only fast and middle models, Good adds slower models, Super shows all including the slowest. Models are categorized as FAST (green), MIDDLE (yellow), SLOWER (orange), or SLOW (red) based on size and resource requirements. Stored in `localStorage`.
+- **System type selector** (top-left corner): Simple Laptop / Good Laptop or Desktop / Super Laptop or Good Desktop. Filters model dropdowns by speed category — Simple shows only fast and middle models, Good adds slower models, Super shows all including the slowest. Models are categorized as FAST (green), MIDDLE (yellow), SLOWER (orange), or SLOW (red) based on size and resource requirements. Stored in `localStorage`.
 
 #### Actions
 

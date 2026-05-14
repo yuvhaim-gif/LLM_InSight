@@ -28,7 +28,7 @@ The central page for running experiments and configuring every aspect of the ana
 
 - **Logged in as** — current user.
 - **Logout** — ends session, backs up data, returns to login.
-- **System profile** — Simple Laptop / Good Laptop / Super Laptop. Filters model dropdowns by speed category: Simple shows only fast and middle-speed models, Good adds slower models, Super shows all models including the slowest. Models are color-coded by speed: green (fast), yellow (middle), orange (slower), red (slow). Browser-only setting.
+- **System profile** — Simple Laptop / Good Laptop or Desktop / Super Laptop or Good Desktop. Filters model dropdowns by speed category: Simple shows only fast and middle-speed models, Good adds slower models, Super shows all models including the slowest. Models are color-coded by speed: green (fast), yellow (middle), orange (slower), red (slow). Browser-only setting.
 
 #### Weights Panel (Left Side)
 
@@ -276,7 +276,7 @@ Multi-prompt sessions carry the best answer from the previous prompt forward as 
 | Domain advisor filter | localStorage | Filters dropdowns visually |
 | Weight profile selector (before Apply) | localStorage | Pre-fills weight fields |
 | Deeper-analysis modal weights | Temporary | Charts only |
-| System profile | localStorage | Display preference |
+| System profile | localStorage | Filters model dropdowns by speed category |
 
 All other controls (models, weights after Apply, toggles, loop settings, grader settings) are stored in the server session.
 
