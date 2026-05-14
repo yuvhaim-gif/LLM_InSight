@@ -60,7 +60,7 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
 1. Keep endpoint signatures stable.
 2. ~~Split frontend scripts by feature without changing API contracts.~~ ✅ Done — `main.js` and `review.js` split into `shared/`, `main/`, `review/` modules. Shared Deeper Analysis modal unified. Dead code (duplicate download functions) removed.
 3. ~~Extract repeated payload builders into shared utilities.~~ ✅ Done — duplicated CSS (reset, body gradient, star overlay, keyframes, footer, logo-circle, deeper-analysis modal) extracted to `static/css/shared.css`. Repeated HTML fragments (head meta/links, footer, logo badge, deeper-analysis modal, model selector blocks, cloud icon logic) extracted to Jinja2 partials in `templates/partials/`. Page-specific CSS files retain only override rules. All templates use `{% include %}` and Jinja macros. No visual, JS, route, or backend changes.
-4. Add contract tests: backup schema, restore behavior, advanced map compatibility, auth matrix, provider routing.
+4. ~~Add contract tests: backup schema, restore behavior, advanced map compatibility, auth matrix, provider routing.~~ ✅ Done — 102 contract tests in `tests/` covering backup schema (11), restore behavior (15), advanced map compatibility (8), auth matrix (40), and provider routing (28). Uses `pytest` with monkeypatched temp directories and in-memory DB. No production code changes. Dev dependency in `requirements-dev.txt`.
 5. Then optimize internals (loop granularity, parser boundaries, logging).
 
 ## Regression Checklist

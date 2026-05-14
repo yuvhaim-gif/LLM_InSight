@@ -128,6 +128,15 @@ python main.py
 
 Open `http://localhost:5000` and sign in with the credentials from your `.env` file.
 
+### Running Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/ -v --tb=short
+```
+
+102 contract tests validate backup schema, restore behavior, advanced model map compatibility, auth matrix, and provider routing. Tests use monkeypatched temp directories and an isolated SQLite database — no production files are touched, no AI models are called, and no `.env` file is required.
+
 ## Pages
 
 | Page | Path | Purpose |
@@ -238,6 +247,7 @@ Calls are routed automatically by model name:
 | [transformers](https://huggingface.co/docs/transformers/) | >=4.40 | HuggingFace model loading for GLM-4 (optional — only needed for GLM models) |
 | [torch](https://pytorch.org/) | >=2.2 | PyTorch backend for GLM-4 inference (optional — only needed for GLM models) |
 | [langsmith](https://docs.smith.langchain.com/) | >=0.1 | Tracing/observability via `@traceable` decorator (optional — falls back to no-op if missing) |
+| [pytest](https://docs.pytest.org/) | >=8.0 | Contract test suite (`requirements-dev.txt`, not installed in production) |
 | [Chart.js](https://www.chartjs.org/) | CDN | Frontend charts (bar, radar, line) in main and review pages |
 | [chartjs-plugin-datalabels](https://chartjs-plugin-datalabels.netlify.app/) | CDN | Data labels on Chart.js charts |
 
@@ -290,6 +300,7 @@ LangSmith/LangChain tracing on all AI layers via `@traceable` decorators. Requir
 - **Data models**: `models.py` (Pydantic: `Layer2Response`, `Layer2Critique`)
 - **Utilities**: `utils/session.py`, `utils/file_io.py`, `utils/common.py`, `utils/text_processing.py`, `utils/validation.py`, `utils/grader_settings.py`
 - **State**: `state.py` (hybrid: per-session state via SQLite, GLM cache in-memory), `db.py` (SQLite backend for per-session runtime state)
+- **Tests**: `tests/` (pytest contract tests: backup schema, restore behavior, advanced map compat, auth matrix, provider routing), `requirements-dev.txt`
 - **Frontend**: `templates/` (login, main, review, config_graders), `templates/partials/` (shared Jinja2 includes and macros), `static/css/shared.css` (common base styles), `static/css/` (page-specific overrides), `static/js/`
 
 ## Documentation

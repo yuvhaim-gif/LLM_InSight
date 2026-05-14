@@ -225,6 +225,12 @@ Startup behavior: missing required variables print an error and `sys.exit(1)`. M
 | `torch` | PyTorch backend for GLM-4 | Yes (only for GLM models) |
 | `langsmith` | `@traceable` decorator for observability | Yes (falls back to no-op) |
 
+### Dev Dependencies (`requirements-dev.txt`)
+
+| Package | Purpose |
+|---|---|
+| `pytest` | Contract test suite (102 tests: backup schema, restore, advanced maps, auth matrix, provider routing) |
+
 ### Grader Settings (`graderdata/*.jsonl`)
 
 One file per named setting. Each file has one JSON object per line: `{ key, rubric, grader, weight }`. The `default.jsonl` file ships with the project and is read-only. Custom settings are created via the Config Graders page and stored in the same directory.
