@@ -5,6 +5,7 @@ from utils.common import utc_now_iso
 
 _db_lock = threading.Lock()
 _connection = None
+_known_sessions: set = set()
 
 
 def _get_conn():
@@ -31,6 +32,8 @@ def init_db():
 
 
 def _ensure_row(conn, session_id):
+    if session_id in _known_sessions:
+        return
     row = conn.execute(
         "SELECT 1 FROM session_state WHERE session_id = ?", (session_id,)
     ).fetchone()
@@ -40,6 +43,7 @@ def _ensure_row(conn, session_id):
             (session_id, utc_now_iso()),
         )
         conn.commit()
+    _known_sessions.add(session_id)
 
 
 def get_state(session_id):
@@ -127,3 +131,4 @@ def cleanup_old_sessions(max_age_hours=24):
             "DELETE FROM session_state WHERE updated_at < ?", (cutoff,)
         )
         conn.commit()
+        _known_sessions.clear()

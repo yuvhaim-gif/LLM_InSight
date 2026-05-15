@@ -8,6 +8,15 @@ import re
 from datetime import datetime, timezone
 from typing import Optional, List
 
+_RE_CODE_FENCE = re.compile(r'^\s*```\s*(?:json)?\s*|\s*```\s*$', re.IGNORECASE)
+_RE_JSON_OBJECTS = re.compile(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}')
+
+ERROR_PREFIXES = (
+    "[OLLAMA_TIMEOUT]", "[OLLAMA_ERROR]", "[GOOGLE_TIMEOUT]",
+    "[GOOGLE_ERROR]", "[MISTRAL_TIMEOUT]", "[MISTRAL_ERROR]",
+    "[GLM_TIMEOUT]", "[GLM_ERROR]"
+)
+
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -20,7 +29,7 @@ def safe_print(*args, **kwargs):
 
 def try_parse_json(text: str) -> Optional[dict]:
     if not text: return None
-    cleaned = re.sub(r'^\s*```\s*(?:json)?\s*|\s*```\s*$', '', text, flags=re.IGNORECASE).strip()
+    cleaned = _RE_CODE_FENCE.sub('', text).strip()
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
@@ -31,7 +40,7 @@ def try_parse_json(text: str) -> Optional[dict]:
                 return json.loads(possible_json)
             except json.JSONDecodeError:
                 pass
-        matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', cleaned)
+        matches = _RE_JSON_OBJECTS.findall(cleaned)
         for match in reversed(matches):
             try:
                 parsed = json.loads(match)
@@ -82,10 +91,7 @@ def is_failed_iteration_entry(entry: Optional[dict]) -> bool:
     reply = entry.get("layer1_reply", "")
     if not reply:
         return True
-    error_prefixes = ("[OLLAMA_TIMEOUT]", "[OLLAMA_ERROR]", "[GOOGLE_TIMEOUT]", 
-                      "[GOOGLE_ERROR]", "[MISTRAL_TIMEOUT]", "[MISTRAL_ERROR]",
-                      "[GLM_TIMEOUT]", "[GLM_ERROR]")
-    if any(str(reply).startswith(prefix) for prefix in error_prefixes):
+    if str(reply).startswith(ERROR_PREFIXES):
         return True
     return False
 
@@ -95,10 +101,7 @@ def is_layer1_error_or_timeout(layer1_entry: dict) -> bool:
     reply = layer1_entry.get("layer1_reply", "")
     if not reply:
         return True
-    error_prefixes = ("[OLLAMA_TIMEOUT]", "[OLLAMA_ERROR]", "[GOOGLE_TIMEOUT]", 
-                      "[GOOGLE_ERROR]", "[MISTRAL_TIMEOUT]", "[MISTRAL_ERROR]",
-                      "[GLM_TIMEOUT]", "[GLM_ERROR]")
-    return any(str(reply).startswith(prefix) for prefix in error_prefixes)
+    return str(reply).startswith(ERROR_PREFIXES)
 
 def create_failed_grade_entry(layer1_entry: dict, grade_tag: str, combined_prompts: List[str], prompt_num: int, active_keys: list = None) -> dict:
     from config import CATEGORY_WEIGHTS

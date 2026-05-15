@@ -10,12 +10,11 @@ from config import (
     DEFAULT_LAYER2_MODEL, CATEGORY_WEIGHTS, LAYER3_GRADER_MODELS
 )
 
-def _safe_print(*args, **kwargs):
+def _safe_log(*args):
     try:
-        print(*args, **kwargs)
-    except UnicodeEncodeError:
-        text = ' '.join(str(a) for a in args)
-        print(text.encode('ascii', 'replace').decode('ascii'), **kwargs)
+        logging.debug(' '.join(str(a) for a in args))
+    except Exception:
+        pass
 
 def get_large_session_data(key: str, default=None):
     return session.get(key, default)
@@ -27,18 +26,18 @@ def set_large_session_data(key: str, value):
 def get_session_weights():
     weights = session.get('custom_weights')
     if weights and isinstance(weights, dict):
-        _safe_print(f"[Weights] Using custom: {weights}")
+        _safe_log(f"[Weights] Using custom: {weights}")
         return weights
     from utils.grader_settings import get_grader_config
     gsn = session.get('grader_setting_name', 'default')
     config = get_grader_config(gsn)
     weights = config.get('weights', CATEGORY_WEIGHTS.copy())
-    _safe_print(f"[Weights] Using grader config '{gsn}': {weights}")
+    _safe_log(f"[Weights] Using grader config '{gsn}': {weights}")
     return weights
 
 def _get_session_model(session_key: str, default_model: str, layer_name: str):
     selected_model = session.get(session_key, default_model)
-    _safe_print(f"[Model] Using {layer_name}: {selected_model}")
+    _safe_log(f"[Model] Using {layer_name}: {selected_model}")
     return selected_model
 
 def get_session_layer1a_model():
@@ -58,7 +57,7 @@ def get_layer3_grader_models():
     gsn = session.get('grader_setting_name', 'default')
     config = get_grader_config(gsn)
     graders = config.get('grader_models', dict(LAYER3_GRADER_MODELS))
-    _safe_print(f"[Model] Using Layer3 graders ('{gsn}'): {graders}")
+    _safe_log(f"[Model] Using Layer3 graders ('{gsn}'): {graders}")
     return graders
 
 def _get_advanced_models(key: str):

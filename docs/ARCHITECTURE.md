@@ -13,20 +13,20 @@ How the demo is structured — components, data flow, and persistence. The syste
 | API routes | `routes/api_routes.py` | Auth, model/weight/toggle updates, grader settings CRUD, progress, backup |
 | Review routes | `routes/review_routes.py` | Saved-chat browsing, load, delete, upload, backup analysis |
 | Blueprint registration | `routes/__init__.py` | Registers `api_bp` and `main_bp` |
-| Loop orchestrator | `ai/iterative_loop.py` | Runs the full iteration pipeline per prompt |
+| Loop orchestrator | `ai/iterative_loop.py` | Runs the full iteration pipeline per prompt. Token usage accumulated incrementally via `_merge_token_usage` (no post-loop scan). Session ID cached in thread-local at loop entry |
 | Layer 0 | `ai/layer0.py` | Brainstorming ideas (optional, runs once before loop) |
 | Layer 1 | `ai/layer1.py` | Answer generation (two variants: original + improved) |
 | Layer 2 | `ai/layer2.py` | Prompt rewriting using grader feedback, weights, and context |
 | Layer 3 | `ai/layer3.py` | Parallel multi-category grading with retries (1-8 configurable categories) |
 | Provider routing | `ai/api_calls.py` | Routes calls to Ollama, Mistral, Gemini, or GLM-4 |
 | Data models | `models.py` | Pydantic: `Layer2Response`, `Layer2Critique` |
-| Session helpers | `utils/session.py` | Session accessors, advanced mode detection, model selection tracking |
+| Session helpers | `utils/session.py` | Session accessors, advanced mode detection, model selection tracking. Verbose accessor logs use `logging.debug` (not console print) |
 | File I/O | `utils/file_io.py` | Ledger, history, backup, console output, chat JSON export |
-| Text processing | `utils/text_processing.py` | Console parsing, similarity, deduplication, answer extraction |
-| Common utilities | `utils/common.py` | Scoring, JSON parsing, error detection, `@traceable` wrapper |
+| Text processing | `utils/text_processing.py` | Console parsing, similarity, deduplication, answer extraction. Pre-compiled regex constants for HTML tags, horizontal rules, whitespace, iteration/prompt markers. Batched `_CLEAN_REPLACEMENTS` tuple for `clean_answer_text` |
+| Common utilities | `utils/common.py` | Scoring, JSON parsing, error detection, `@traceable` wrapper, `ERROR_PREFIXES` constant, pre-compiled regex for code fences and JSON extraction |
 | Validation | `utils/validation.py` | Input/integer/float/model validators |
-| State database | `db.py` | SQLite-backed per-session state (iteration counter, processing flag, model counter) with thread-safe access |
-| Runtime state | `state.py` | Hybrid state module: delegates per-session serializable state to SQLite via `db.py`, keeps GLM cache/lock/cancel in-memory |
+| State database | `db.py` | SQLite-backed per-session state (iteration counter, processing flag, model counter) with thread-safe access. `_known_sessions` set cache skips redundant existence checks |
+| Runtime state | `state.py` | Hybrid state module: delegates per-session serializable state to SQLite via `db.py`, keeps GLM cache/lock/cancel in-memory. Thread-local session ID cache (`set_cached_session_id`/`clear_cached_session_id`) avoids repeated Flask session lookups during loop runs |
 | Frontend JS | `static/js/shared/` (utils, chart-helpers, deeper-analysis), `static/js/main/` (weights, filters, toggles, models, grader-settings, download, upload, processing, advanced, init), `static/js/review/` (state, chat-list, prompt-view, prompt-chart, modals, init), `static/js/config_graders.js` | Modular scripts loaded per page; shared modules provide common utilities and the Deeper Analysis modal |
 | Frontend CSS | `static/css/shared.css` (base reset, body gradient, star overlay, keyframes, footer, logo-circle, deeper-analysis modal), `static/css/main.css`, `static/css/review.css`, `static/css/config_graders.css` | Shared base styles loaded first; page-specific files contain only overrides and unique rules |
 | Template partials | `templates/partials/_head_common.html` (meta, favicon, font, shared.css), `_head_charts.html` (Chart.js CDN), `_footer.html`, `_logo_badge.html` (parameterized size), `_deeper_analysis_modal.html`, `_model_icon.html` (cloud icon macro), `_model_selector.html` (sidebar selector macro) | Jinja2 includes and macros eliminating repeated HTML across the 4 page templates |

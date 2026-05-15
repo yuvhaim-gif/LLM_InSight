@@ -49,21 +49,25 @@ def startup_cleanup():
     print(f"Startup cleanup completed - ready to process prompts (Total threads: {num_threads})")
 
 def exit_backup():
-    print("EXIT: Saving session state...")
-    from ai.api_calls import unload_glm_models
-    unload_glm_models()
-    print("Backing up any working files with content...")
-    backup_file(LEDGER_FILE, "exit")
-    backup_file(BESTBEST_CACHE, "exit")
-    backup_file(ITERATION_HISTORY_FILE, "exit")
-    backup_file(CONSOLE_OUTPUT_FILE, "exit")
-    backup_chat_json("exit")
-    print("Clearing working files...")
-    clear_file(LEDGER_FILE)
-    clear_file(BESTBEST_CACHE)
-    clear_file(ITERATION_HISTORY_FILE)
-    cleanup_old_sessions(max_age_hours=0)
-    print("Exit backup completed")
+    try:
+        logging.disable(logging.CRITICAL)
+        print("EXIT: Saving session state...")
+        from ai.api_calls import unload_glm_models
+        unload_glm_models()
+        print("Backing up any working files with content...")
+        backup_file(LEDGER_FILE, "exit")
+        backup_file(BESTBEST_CACHE, "exit")
+        backup_file(ITERATION_HISTORY_FILE, "exit")
+        backup_file(CONSOLE_OUTPUT_FILE, "exit")
+        backup_chat_json("exit")
+        print("Clearing working files...")
+        clear_file(LEDGER_FILE)
+        clear_file(BESTBEST_CACHE)
+        clear_file(ITERATION_HISTORY_FILE)
+        cleanup_old_sessions(max_age_hours=0)
+        print("Exit backup completed")
+    except Exception:
+        pass
 
 from routes import register_routes
 register_routes(app)

@@ -114,7 +114,7 @@ Route contracts, runtime behavior, JSON schemas, configuration, and frontend int
    - Persist iteration data.
 4. Stop on first match: score >= `min_grade`, degradation break (score dropped), or `max_iterations` reached.
 5. Mark best-best/ties, save to `iteration_history.json`, `best_best_layer1.json`, and ledger.
-6. Aggregate token usage per provider across all iterations.
+6. Token usage accumulated incrementally per iteration via `_merge_token_usage` (no post-loop scan). Final totals written to all entries and saved with history.
 
 ## Layer Behavior
 
@@ -133,7 +133,7 @@ Route contracts, runtime behavior, JSON schemas, configuration, and frontend int
 - Model resolved from advanced per-iteration map or session default.
 - Defaults: Layer 1A `gemma:7b-instruct-q4_K_M`, Layer 1B `granite4:latest`.
 - Each call logged to ledger with timestamp, model, runtime, tokens.
-- Model changes between iterations are detected and logged.
+- Model resolution consolidated to a single summary print per call: `"⏹️  Iteration {N} - Layer1{A/B}: {model} ({source})"`. Model change detection logged at `DEBUG` level.
 - Timeout: 240s.
 
 ### Layer 2 (`ai/layer2.py`)

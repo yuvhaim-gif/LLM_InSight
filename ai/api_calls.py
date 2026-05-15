@@ -10,7 +10,7 @@ from config import (
     _GEMINI_MODELS, _MISTRAL_MODELS, _GLM_MODELS, _GLM_MODEL_MAP
 )
 from secrets_config import GOOGLE_API_KEY, MISTRAL_API_KEY
-from utils.common import utc_now_iso
+from utils.common import utc_now_iso, ERROR_PREFIXES
 import state
 
 try:
@@ -47,10 +47,7 @@ def call_model(model: str, messages: List[dict], timeout: int = 300) -> Dict:
 def is_error_response(response: Union[str, Dict]) -> bool:
     if isinstance(response, dict):
         response = response.get("content", "")
-    error_prefixes = ("[OLLAMA_TIMEOUT]", "[OLLAMA_ERROR]", "[GOOGLE_TIMEOUT]", 
-                      "[GOOGLE_ERROR]", "[MISTRAL_TIMEOUT]", "[MISTRAL_ERROR]",
-                      "[GLM_TIMEOUT]", "[GLM_ERROR]")
-    return any(str(response).startswith(prefix) for prefix in error_prefixes)
+    return str(response).startswith(ERROR_PREFIXES)
 
 def call_ollama(model: str, messages: List[dict], timeout: int = 300) -> Dict:
     if chat is None: 
@@ -469,7 +466,7 @@ def unload_glm_models():
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            print("   ✓ GLM models unloaded")
+            print("   [OK] GLM models unloaded")
         except Exception as e:
             state._glm_model_cache.clear()
             logging.error(f"[GLM_UNLOAD_ERROR] {e}")

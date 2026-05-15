@@ -5,24 +5,32 @@ import logging
 from typing import Tuple, Optional, List
 from utils.common import try_parse_json
 
+_RE_OPEN_TAG = re.compile(r'<[a-z\-]+>')
+_RE_CLOSE_TAG = re.compile(r'</[a-z\-]+>')
+_RE_HR = re.compile(r'^\s*---+\s*$', re.MULTILINE)
+_RE_NEWLINES = re.compile(r'\n+')
+_RE_SPACES = re.compile(r'  +')
+_RE_WHITESPACE = re.compile(r'\s+')
+_RE_ITERATION = re.compile(r'ITERATION\s+(\d+)')
+_RE_PROMPT_START = re.compile(r'🎯\s*STARTING\s+ANALYSIS\s+FOR\s+PROMPT\s*#\s*(\d+)[\s\S]*?PROMPT:\s*(.+?)(?:\n|$)')
+_RE_FINAL_BESTBEST = re.compile(r'🏆 FINAL BEST-BEST ANSWER FOR PROMPT #(\d+)')
+
+_CLEAN_REPLACEMENTS = (
+    ('\\n', '\n'), ('\\r', '\r'), ('\\t', '\t'),
+    ('\\"', '"'), ('\\/', '/'),
+    ('<br>', '\n'), ('<br/>', '\n'), ('<br />', '\n'),
+    ('\\(', '('), ('\\)', ')'), ('\\|', '|'),
+)
+
 def clean_answer_text(text: str) -> str:
     if not isinstance(text, str):
         return text
     
-    text = text.replace('\\n', '\n')
-    text = text.replace('\\r', '\r')
-    text = text.replace('\\t', '\t')
-    text = text.replace('\\"', '"')
-    text = text.replace('\\/', '/')
-    text = text.replace('<br>', '\n')
-    text = text.replace('<br/>', '\n')
-    text = text.replace('<br />', '\n')
-    text = text.replace('\\(', '(')
-    text = text.replace('\\)', ')')
-    text = text.replace('\\|', '|')
-    text = re.sub(r'<[a-z\-]+>', '', text)
-    text = re.sub(r'</[a-z\-]+>', '', text)
-    text = re.sub(r'^\s*---+\s*$', '', text, flags=re.MULTILINE)
+    for old, new in _CLEAN_REPLACEMENTS:
+        text = text.replace(old, new)
+    text = _RE_OPEN_TAG.sub('', text)
+    text = _RE_CLOSE_TAG.sub('', text)
+    text = _RE_HR.sub('', text)
     
     return text.strip()
 
@@ -145,8 +153,7 @@ def extract_prompts_from_console(console_output: str) -> list:
         return []
     
     try:
-        pattern = r'🎯\s*STARTING\s+ANALYSIS\s+FOR\s+PROMPT\s*#\s*(\d+)[\s\S]*?PROMPT:\s*(.+?)(?:\n|$)'
-        matches = list(re.finditer(pattern, console_output))
+        matches = list(_RE_PROMPT_START.finditer(console_output))
         
         if not matches:
             return []
@@ -173,8 +180,7 @@ def extract_all_best_best_from_console(console_output: str) -> list:
         return []
     
     try:
-        pattern = r"🏆 FINAL BEST-BEST ANSWER FOR PROMPT #(\d+)"
-        matches = list(re.finditer(pattern, console_output))
+        matches = list(_RE_FINAL_BESTBEST.finditer(console_output))
         
         if not matches:
             return []
@@ -208,8 +214,7 @@ def extract_max_iteration_from_console(console_output: str) -> int:
         return 1
     
     try:
-        pattern = r"ITERATION\s+(\d+)"
-        matches = re.findall(pattern, console_output)
+        matches = _RE_ITERATION.findall(console_output)
         if matches:
             return max(int(m) for m in matches)
     except Exception as e:
@@ -221,8 +226,8 @@ def clean_text_for_json(text: str) -> str:
     if not text:
         return ""
     
-    text = re.sub(r'\n+', ' ', text)
-    text = re.sub(r'  +', ' ', text)
+    text = _RE_NEWLINES.sub(' ', text)
+    text = _RE_SPACES.sub(' ', text)
     text = text.replace('\t', ' ')
     text = text.strip()
     
@@ -232,8 +237,8 @@ def calculate_text_similarity(text1: str, text2: str) -> float:
     try:
         if not text1 or not text2:
             return 0.0
-        text1_clean = re.sub(r'\s+', ' ', text1.lower().strip())
-        text2_clean = re.sub(r'\s+', ' ', text2.lower().strip())
+        text1_clean = _RE_WHITESPACE.sub(' ', text1.lower().strip())
+        text2_clean = _RE_WHITESPACE.sub(' ', text2.lower().strip())
         if text1_clean == text2_clean:
             return 1.0
         common_chars = sum(1 for a, b in zip(text1_clean, text2_clean) if a == b)

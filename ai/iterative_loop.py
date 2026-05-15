@@ -1,5 +1,4 @@
 import sys
-import gc
 import logging
 import os
 from typing import List, Optional, Dict
@@ -35,23 +34,17 @@ from ai.layer3 import layer3_grade
 
 # Environment variables for LangSmith now handled in config.py
 
-def _aggregate_token_usage(iteration_history_data: List[dict], layer0_token_info: dict) -> dict:
-    tools_usage = {}
-    
-    for iter_data in iteration_history_data:
-        token_data = iter_data.get("token_data", {})
-        for layer_name in ["layer1a", "layer1b"]:
-            layer_tokens = token_data.get(layer_name, {})
-            if layer_tokens and "tool" in layer_tokens:
-                tool = layer_tokens.get("tool", "unknown")
-                tools_usage[tool] = tools_usage.get(tool, {})
-                tools_usage[tool]["input_tokens"] = tools_usage[tool].get("input_tokens", 0) + layer_tokens.get("input_tokens", 0)
-                tools_usage[tool]["output_tokens"] = tools_usage[tool].get("output_tokens", 0) + layer_tokens.get("output_tokens", 0)
-    
-    for tool in tools_usage:
-        tools_usage[tool]["total_tokens"] = tools_usage[tool].get("input_tokens", 0) + tools_usage[tool].get("output_tokens", 0)
-    
-    return tools_usage
+def _merge_token_usage(tools_usage: dict, token_data: dict) -> None:
+    for layer_name in ("layer1a", "layer1b"):
+        layer_tokens = token_data.get(layer_name, {})
+        if layer_tokens and "tool" in layer_tokens:
+            tool = layer_tokens.get("tool", "unknown")
+            entry = tools_usage.setdefault(tool, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
+            inp = layer_tokens.get("input_tokens", 0)
+            out = layer_tokens.get("output_tokens", 0)
+            entry["input_tokens"] += inp
+            entry["output_tokens"] += out
+            entry["total_tokens"] += inp + out
 
 @traceable(run_type="chain", name="Iterative Analysis Loop")
 def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5, 
@@ -66,8 +59,8 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
     prev_prompt = prompt_history[-1] if is_second_prompt else None
     
     current_prompt_num = len(prompt_history) + 1
-    print(f"[DEBUG ITERATIVE_LOOP] prompt_history={prompt_history}, len={len(prompt_history)}")
-    print(f"[DEBUG ITERATIVE_LOOP] file has {num_prompts_in_file} prompts: {list(iteration_history_file.get('prompts', {}).keys())}")
+    logging.debug(f"[DEBUG ITERATIVE_LOOP] prompt_history={prompt_history}, len={len(prompt_history)}")
+    logging.debug(f"[DEBUG ITERATIVE_LOOP] file has {num_prompts_in_file} prompts: {list(iteration_history_file.get('prompts', {}).keys())}")
     logging.info(f"[PROMPT_NUM] session_history={len(prompt_history)}, file_prompts={num_prompts_in_file}, current_prompt_num={current_prompt_num}")
     
     prompt_history.append(prompt)
@@ -163,6 +156,7 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
     all_tools_token_usage = {}
 
     session_id = state._get_session_id()
+    state.set_cached_session_id(session_id)
 
     for iteration_count in range(1, max_iterations + 1):
         state.set_current_iteration_value(iteration_count, session_id)
@@ -171,20 +165,12 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
         iteration_layer1a_model = adv_layer1a.get(str(iteration_count)) or default_layer1a
         iteration_layer1b_model = adv_layer1b.get(str(iteration_count)) or default_layer1b
         
-        print(f"\n{'='*60}")
-        print(f"🔄 PROMPT #{current_prompt_num} - ITERATION {iteration_count}")
-        print(f"{'='*60}")
-        print(f"📍 Models for this iteration:")
-        print(f"   Layer1A (original): {iteration_layer1a_model}")
-        print(f"   Layer1B (improved): {iteration_layer1b_model}")
-        print(f"{'='*60}")
+        print(f"\n{'='*60}\n🔄 PROMPT #{current_prompt_num} - ITERATION {iteration_count} | L1A: {iteration_layer1a_model} | L1B: {iteration_layer1b_model}\n{'='*60}")
         
         layer1_context = layer1_context_accumulated if layer1_last_best_context_enabled else ""
         if layer1_last_best_context_enabled and iteration_count > 1 and last_iteration_best:
             layer1_context = f"[Last Iteration Best Answer]:\n{last_iteration_best['layer1_reply']}\n" + layer1_context
 
-        logging.info(f"[ITERATION_START] PROMPT #{current_prompt_num}, ITERATION {iteration_count}")
-        
         graded_orig = None
         orig = None
         
@@ -196,12 +182,10 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
         )
         iteration_models_used[f"iter_{iteration_count}_layer1a"] = orig.get("model_used")
         
-        logging.info(f"[LAYER1A_DONE] Layer1A completed for iteration {iteration_count}")
         if is_layer1_error_or_timeout(orig):
             logging.error(f"[LAYER1A_ERROR] Layer1A failed/timeout, skipping Layer3 grading")
             print(f"⚠️ [LAYER3_SKIP] Layer1A failed/timeout - Layer3 will not run, assigning grade 1")
             graded_orig = create_failed_grade_entry(orig, "original", prompt_history, current_prompt_num, active_keys=active_keys)
-            logging.info(f"[LAYER3_SKIPPED] Layer3 skipped for Layer1A due to Layer1 error/timeout")
         else:
             print(f"⏳ [LAYER3_GRADE_START] Starting Layer3 grading for Layer1A...")
             # Tracing Layer 3 Grade A
@@ -213,7 +197,6 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
                 score_weights=session_weights,
                 prompt_reference_mode=grade_vs_prompt_mode
             )
-            logging.info(f"[LAYER3_GRADE_DONE] Layer3 grading completed for Layer1A")
         if layer1_last_best_context_enabled:
             layer1_context_accumulated += f"\n[Iteration {iteration_count} Layer1 original reply]:\n{orig['layer1_reply']}\n"
         
@@ -227,7 +210,6 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
         
         if change_prompt_setting:
             try:
-                logging.info(f"[LAYER2_START] Starting Layer2 prompt improvement...")
                 print(f"⏳ [LAYER2_START] Starting Layer2 prompt improvement...")
                 
                 # Tracing Layer 2
@@ -252,7 +234,7 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
                     logging.info(f"[LAYER2_NO_CHANGE] Layer2 did not return different prompt, using original")
                     print(f"ℹ️  Layer2 returned same/empty prompt, using original prompt")
                     improved_prompt_to_use = prompt
-                logging.info(f"[LAYER2_DONE] Layer2 completed")
+
             except KeyboardInterrupt:
                 raise
             except Exception as e:
@@ -269,7 +251,6 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
         if layer1_last_best_context_enabled and iteration_count > 1 and last_iteration_best:
             layer1_improved_ctx = f"[Last Iteration Best Answer]:\n{last_iteration_best['layer1_reply']}\n" + layer1_improved_ctx
         
-        logging.info(f"[LAYER1B_START] Starting Layer1B call...")
         print(f"⏳ [LAYER1B_START] Starting Layer1B call...")
         prev_layer1b_model = iteration_models_used.get(f"iter_{iteration_count-1}_layer1b")
         # Tracing Layer 1B
@@ -278,12 +259,10 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
         )
         iteration_models_used[f"iter_{iteration_count}_layer1b"] = improved.get("model_used")
         
-        logging.info(f"[LAYER1B_DONE] Layer1B completed")
         if is_layer1_error_or_timeout(improved):
             logging.error(f"[LAYER1B_ERROR] Layer1B failed/timeout, skipping Layer3 grading")
             print(f"⚠️ [LAYER3_SKIP] Layer1B failed/timeout - Layer3 will not run, assigning grade 1")
             graded_improved = create_failed_grade_entry(improved, "improved", prompt_history, current_prompt_num, active_keys=active_keys)
-            logging.info(f"[LAYER3_SKIPPED] Layer3 skipped for Layer1B due to Layer1 error/timeout")
         else:
             print(f"⏳ [LAYER3_GRADE_START] Starting Layer3 grading for Layer1B...")
             # Tracing Layer 3 Grade B
@@ -295,7 +274,6 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
                 score_weights=session_weights,
                 prompt_reference_mode=grade_vs_prompt_mode
             )
-            logging.info(f"[LAYER3_GRADE_DONE] Layer3 grading completed for Layer1B")
         if layer1_last_best_context_enabled:
             layer1_improved_context += f"\n[Iteration {iteration_count} Layer1 improved reply]:\n{improved['layer1_reply']}\n"
         
@@ -311,7 +289,6 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
             print(f"\n================ PROMPT {current_prompt_num} - AB TEST RESULTS - ITERATION {iteration_count} ================")
             print(f"Original Score: {orig_score}")
             print(f"Improved Score: {improved_score}")
-            sys.stdout.flush()
             
             ab_result = {
                 "iteration": iteration_count,
@@ -322,7 +299,6 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
             ab_test_results.append(ab_result)
             print(f"Winner: {ab_result['winner'].upper()}")
             print("=" * 60)
-            sys.stdout.flush()
             logging.info(f"[ITERATION_COMPARISON] Iteration {iteration_count} - Original: {orig_score}, Improved: {improved_score}")
         except Exception as e:
             logging.error(f"[AB_TEST_ERROR] Error in AB test comparison: {e}")
@@ -410,16 +386,17 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
         }
         
         iteration_history_data.append(iteration_data)
+        _merge_token_usage(all_tools_token_usage, iteration_token_data)
 
         if iteration_count == 1 or iteration_best_score >= best_score_so_far:
             best_score_so_far = iteration_best_score
             best_best_entry = iteration_best.copy()
 
         if iteration_best:
-            last_iteration_best_for_layer2 = iteration_best.copy()
+            last_iteration_best_for_layer2 = iteration_best
 
         if not is_failed_iteration_entry(iteration_best):
-            last_iteration_best = iteration_best.copy()
+            last_iteration_best = iteration_best
         else:
             logging.warning(f"[ITERATION_FAILED] Not updating last_iteration_best - iteration {iteration_count} had no successful answers")
             if iteration_count == 1:
@@ -438,49 +415,28 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
             print(f"\n✅ PROMPT #{current_prompt_num}: Minimal grade {min_grade} reached with score {iteration_best_score}. Stopping loop.")
             best_best_entry = iteration_best.copy()
             best_score_so_far = iteration_best_score
-            
-            cache_data = {
-                "best_best_entry": best_best_entry,
-                "prompt_number": current_prompt_num,
-                "timestamp": utc_now_iso()
-            }
-            save_json(cache_data, BESTBEST_CACHE)
             break
             
-        degradation_break_enabled = get_degradation_break_enabled()
-        if degradation_break_enabled and iteration_count >= 2:
-            previous_iteration_score = iteration_scores[-2]
-            current_iteration_score = iteration_scores[-1]
-            
-            if current_iteration_score < previous_iteration_score:
-                print(f"\n⚠️ PROMPT #{current_prompt_num}: ITERATION SCORE DECREASED: {previous_iteration_score} → {current_iteration_score}")
-                print(f"🛑 STOPPING to prevent degradation. Best-Best remains from iteration with score {best_score_so_far}")
-                break
-        elif iteration_count >= 2:
+        if iteration_count >= 2:
             previous_iteration_score = iteration_scores[-2]
             current_iteration_score = iteration_scores[-1]
             if current_iteration_score < previous_iteration_score:
-                print(f"\n⚠️ PROMPT #{current_prompt_num}: ℹ️ ITERATION SCORE DECREASED: {previous_iteration_score} → {current_iteration_score} (degradation break is DISABLED - continuing...)")
+                degradation_break_enabled = get_degradation_break_enabled()
+                if degradation_break_enabled:
+                    print(f"\n⚠️ PROMPT #{current_prompt_num}: ITERATION SCORE DECREASED: {previous_iteration_score} → {current_iteration_score}")
+                    print(f"🛑 STOPPING to prevent degradation. Best-Best remains from iteration with score {best_score_so_far}")
+                    break
+                else:
+                    print(f"\n⚠️ PROMPT #{current_prompt_num}: ℹ️ ITERATION SCORE DECREASED: {previous_iteration_score} → {current_iteration_score} (degradation break is DISABLED - continuing...)")
         
         print(f"[ITERATION_PROGRESS:{iteration_count}]")
-        try:
-            sys.stdout.flush()
-            logging.info(f"[ITERATION_END] Iteration {iteration_count} completed successfully")
-        except Exception as e:
-            logging.error(f"[FLUSH_ERROR] Error flushing output: {e}")
         
-        try:
-            gc.collect()
-            logging.debug(f"[MEMORY_CLEANUP] Garbage collection completed for iteration {iteration_count}")
-        except Exception as e:
-            logging.error(f"[GC_ERROR] Garbage collection failed: {e}")
+
 
     for iter_data in iteration_history_data:
         if iter_data["best_score"] == best_score_so_far:
             iter_data["is_best_best"] = True
 
-    all_tools_token_usage = _aggregate_token_usage(iteration_history_data, layer0_token_info)
-    
     for iter_data in iteration_history_data:
         iter_data["all_tools_token_usage"] = all_tools_token_usage
 
@@ -630,6 +586,7 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
     print(f"✅ COMPLETED ANALYSIS FOR PROMPT #{current_prompt_num}")
     print(f"{'='*80}\n")
     
+    state.clear_cached_session_id()
     return best_best_entry, prompt_history
 
 __all__ = ['iterative_loop']

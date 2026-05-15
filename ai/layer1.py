@@ -1,4 +1,5 @@
 import sys
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -19,44 +20,29 @@ def layer1_generate_reply(prompt: str, iteration: int, context: str = "", type_t
     advanced_layer1a_models = get_advanced_layer1a_models()
     advanced_layer1b_models = get_advanced_layer1b_models()
     
+    layer_label = "Layer1A" if type_tag == "original" else "Layer1B"
     if type_tag == "original":
         iteration_key = str(iteration)
         if iteration_key in advanced_layer1a_models:
             model_to_use = advanced_layer1a_models[iteration_key]
             source = "⚙️ ADVANCED (per-iteration)"
-            print(f"⏹️  Iteration {iteration} - Layer1A ORIGINAL:")
-            print(f"   ⚙️ Source: ADVANCED (per-iteration configuration)")
-            print(f"   🤖 Model: {model_to_use}")
         else:
             model_to_use = get_session_layer1a_model()
             source = "🤖 DEFAULT (main selector)"
-            print(f"⏹️  Iteration {iteration} - Layer1A ORIGINAL:")
-            print(f"   🤖 Source: DEFAULT (main selector)")
-            print(f"   🤖 Model: {model_to_use}")
-        
-        if prev_model_used and prev_model_used != model_to_use:
-            print(f"   ⚠️ MODEL CHANGED: {prev_model_used} → {model_to_use}")
-        elif prev_model_used:
-            print(f"   ✓ Model unchanged from previous iteration")
     else:
         iteration_key = str(iteration)
         if iteration_key in advanced_layer1b_models:
             model_to_use = advanced_layer1b_models[iteration_key]
             source = "⚙️ ADVANCED (per-iteration)"
-            print(f"⏹️  Iteration {iteration} - Layer1B IMPROVED:")
-            print(f"   ⚙️ Source: ADVANCED (per-iteration configuration)")
-            print(f"   🤖 Model: {model_to_use}")
         else:
             model_to_use = get_session_layer1b_model()
             source = "🤖 DEFAULT (main selector)"
-            print(f"⏹️  Iteration {iteration} - Layer1B IMPROVED:")
-            print(f"   🤖 Source: DEFAULT (main selector)")
-            print(f"   🤖 Model: {model_to_use}")
-        
-        if prev_model_used and prev_model_used != model_to_use:
-            print(f"   ⚠️ MODEL CHANGED: {prev_model_used} → {model_to_use}")
-        elif prev_model_used:
-            print(f"   ✓ Model unchanged from previous iteration")
+    
+    print(f"⏹️  Iteration {iteration} - {layer_label}: {model_to_use} ({source})")
+    if prev_model_used and prev_model_used != model_to_use:
+        logging.debug(f"[LAYER1_MODEL_CHANGE] {layer_label}: {prev_model_used} → {model_to_use}")
+    elif prev_model_used:
+        logging.debug(f"[LAYER1_MODEL_UNCHANGED] {layer_label}: {model_to_use}")
     
     messages = [
         {"role": "system", "content": "Logical reasoning assistant. Produce structured and complete answers."},

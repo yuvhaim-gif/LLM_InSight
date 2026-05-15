@@ -10,6 +10,8 @@ _iteration_events_lock = threading.Lock()
 
 _fallback_session_id = None
 
+_thread_local = threading.local()
+
 
 def get_iteration_event(session_id=None):
     if session_id is None:
@@ -20,7 +22,18 @@ def get_iteration_event(session_id=None):
         return _iteration_events[session_id]
 
 
+def set_cached_session_id(session_id):
+    _thread_local.cached_session_id = session_id
+
+
+def clear_cached_session_id():
+    _thread_local.cached_session_id = None
+
+
 def _get_session_id():
+    cached = getattr(_thread_local, 'cached_session_id', None)
+    if cached is not None:
+        return cached
     try:
         from flask import session as flask_session
         user = flask_session.get('user')
