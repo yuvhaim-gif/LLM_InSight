@@ -1,78 +1,189 @@
-# LLM InSights — Demo
+# LLM InSights
 
-> **Release note:** This is my home rig testing process shown through a frontend. I decided to release because I am sure many of you will have better ideas of how to define evaluation, improve prompts automatically to specific evaluation results, test models, and review logs.
+> A browser-based tool for iterative prompt optimization, multi-model A/B testing, and structured LLM evaluation using configurable grading rubrics. Built as a personal testing rig and released in the hope that others may find it useful, adapt it, or take the ideas further.
 
-A hands-on demo for building your own grading rubric, automatically optimizing prompts, A/B testing models, and refining synthetic data — all from the browser. No code changes needed; every experiment is configured through frontend selectors and pages.
+[![Demo](screenshots/Main%20page.png)](screenshots/demo.mp4)
+*Click the image to watch a short demo walkthrough (~1.5 min).*
 
-## Demo
+---
 
-[![Watch Demo](screenshots/Main%20page.png)](screenshots/Recording%202026-05-05.mp4)
+## What It Does
 
-## Core Idea
+You write a prompt. The system sends it to two competing LLM models, grades both answers against a configurable rubric, optionally rewrites the prompt using grader feedback, and repeats the cycle — keeping the best answer each round. Every variable is controlled from the UI: which models compete, what the rubric measures, how categories are weighted, and when the loop stops.
 
-You write a prompt. The system sends it to two competing LLM models, grades both answers with configurable rubrics, rewrites the prompt using grader feedback, and repeats — keeping the best answer each round. You control every variable from the UI: which models compete, what the rubric measures, how categories are weighted, and when the loop stops.
+Each run produces a structured record of prompts, answers, scores, and model metadata that can double as refined synthetic data.
 
-The result is a structured record of prompts, answers, scores, and model metadata that doubles as refined synthetic data.
+---
 
-## What You Can Do (Frontend Only)
+## Key Capabilities
 
-### Create Your Own Grading Rubric
+- **Custom Grading Rubrics** — Define up to 8 grading categories, each with its own rubric text, grader model, and weight. Save named configurations and switch between them at any time.
+- **Automatic Prompt Optimization** — The system rewrites your prompt after each iteration using grader feedback, category weights, and best answers as context. Techniques like Chain-of-Thought, Few-Shot, Tree of Thoughts, and Role Prompting are applied automatically while preserving the original intent.
+- **Multi-Model A/B Testing** — Assign different models to each answering slot and compare their outputs head-to-head. The Advanced panel supports per-iteration model assignments for systematic cross-model comparisons.
+- **Synthetic Data Generation** — Every run produces structured (prompt, answer, multi-dimensional scores) tuples and (original prompt, improved prompt) pairs. The JSONL ledger records prompts, replies, models, scores, and token counts. Multi-prompt sessions chain context across prompts for multi-turn synthetic conversations.
+- **Session Review and Analysis** — Browse, load, and analyze past runs with per-prompt iteration stats, score grids, and an in-depth analysis modal featuring bar/radar charts, token usage breakdowns, runtime charts, and adjustable weights for what-if exploration.
 
-Open **Config Graders** (`/config_graders`) and define 1-8 grading categories. For each category you set:
+---
 
-- **Key name** — what the category measures (e.g. `accuracy`, `humor`, `safety`).
-- **Rubric** — free-text description of scoring criteria.
-- **Grader model** — which small LLM evaluates this category (`phi3:mini`, `gemma2:2b`, `qwen2.5:1.5b`, `llama3.2:3b`).
-- **Weight %** — how much it counts toward the overall score.
+## How the Pipeline Works
 
-Save named configurations, load them on the main page, and switch between rubrics at any time. The `default` setting ships with five categories (accuracy, clarity, conciseness, creativity, structure) and is read-only.
+```
+Layer 0 (once, optional)  -->  [ Layer 1A  -->  Grade  -->  Layer 2 rewrite  -->  Layer 1B  -->  Grade  -->  Pick winner ]  x N iterations
+```
 
-### Automatically Optimize Prompts
+| Layer | Role |
+|---|---|
+| **Layer 0** | Optional brainstorming step. Generates concise alternative ideas or directions before the loop begins. |
+| **Layer 1A / 1B** | Two competing answer models. Each produces a full response to the prompt (or improved prompt). |
+| **Layer 2** | Prompt improver. Rewrites the prompt using grader feedback, best answers, and micro-replies as context. |
+| **Layer 3** | Multi-category grader. Each category is evaluated independently by its own small LLM, scores are weighted and combined. |
 
-Toggle **Change Prompt** to `Yes` on the main page. Layer 2 rewrites your prompt after every iteration using grader feedback, category weights, and best answers as context. It applies Chain-of-Thought, Few-Shot, Tree of Thoughts, Role Prompting, and other techniques automatically. The original prompt's intent and constraints are always preserved.
+### Stop Conditions
 
-### A/B Test Models
+The loop ends when the first of these is met:
 
-Pick different models for **Answer Model 1** (Layer 1A) and **Answer Model 2** (Layer 1B) in the sidebar. Each iteration runs both, grades both, and picks the winner. The **Advanced** panel lets you assign a different model to each iteration for Layer 1A, 1B, and the prompt improver (Layer 2) individually, enabling systematic cross-model comparisons.
+1. The best score reaches the target grade (default: 100).
+2. Degradation break is enabled and the score drops from the previous iteration.
+3. The maximum number of iterations is reached (default: 5).
 
-### Refine Synthetic Data
+---
 
-Every run produces structured (prompt, answer, multi-dimensional scores) tuples. Layer 2 generates (original prompt, improved prompt) pairs. The JSONL ledger records every call with prompts, replies, models, scores, and token counts — ready for dataset construction. Multi-prompt sessions chain context across prompts, enabling multi-turn synthetic conversations.
+## Pages
 
-### Review Page — Log and Analysis Tool
+| Page | Path | Purpose |
+|---|---|---|
+| **Login** | `/login` | Simple authentication with an animated background |
+| **Main Analysis** | `/` | Run experiments, configure models and toggles, view live results and charts |
+| **Config Graders** | `/config_graders` | Create and edit grading rubrics — categories, rubric text, grader models, weights |
+| **Review History** | `/review_chats` | Browse saved runs, load or delete past sessions, open the deeper analysis modal |
 
-The **Review History** page (`/review_chats`) lets you browse, load, and analyze past runs:
+---
 
-- Per-prompt iteration stats with scores, models, runtimes, and token usage.
-- Score grids and iteration cards that dynamically render whatever grading keys were used.
-- **Analyze Deeper** modal with average grade bar/radar charts, token usage chart, runtime chart, per-key charts, adjustable weights for what-if analysis, and the grader setting name from the original run.
-- Load any past session back into the main page for continued experimentation.
-- Delete old runs or upload exported JSON files.
+## Frontend Controls
 
-## Prerequisites
+### Main Page — Sidebar (Model Selection)
+
+| Control | Purpose |
+|---|---|
+| **Layer 0 Model** (Ideas) | Selects the brainstorming model that runs before the loop |
+| **Answer Model 1** (Layer 1A) | First answer model in each iteration |
+| **Answer Model 2** (Layer 1B) | Second answer model in each iteration |
+| **Prompt Improver** (Layer 2) | Model that rewrites prompts using grader feedback |
+| **Advanced Panel** | Per-iteration model assignment for Layers 1A, 1B, and 2. Locks main selectors when saved |
+| **System Profile** | Filters model dropdowns by hardware tier (Simple / Good / Super) — browser-side only |
+
+### Main Page — Controls Area
+
+| Control | Purpose |
+|---|---|
+| **Advise Models by Domain** | Visual filter for model dropdowns (Coding, Creative, Science, Experimental, Balanced) |
+| **Domain Selection** | Weight profile preset (Balanced, Accuracy, Creativity, Conciseness) |
+| **Break Target Grade** | Stop the loop when this score is reached (1--100) |
+| **Iterations** | Maximum refinement rounds per prompt (1--5) |
+| **Degradation Break** | Stop if the score drops from the previous iteration |
+| **Change Prompt** | Enable or disable Layer 2 prompt rewriting |
+| **Give Ideas** | Enable or disable Layer 0 brainstorming |
+| **Last Best Answer Retention** | Feed the best answer from the previous iteration as context into the next |
+| **Grade vs. Current / First Prompt** | Choose whether graders judge the answer against the current or the first prompt in the session |
+
+### Main Page — Weights and Grader Settings
+
+| Control | Purpose |
+|---|---|
+| **Weight Inputs** | Adjust category weights (auto-normalized). Apply and Reset buttons |
+| **Grader Setting Selector** | Switch between saved grading rubrics |
+| **Config Graders Link** | Opens the rubric editor page |
+
+### Main Page — Action Buttons
+
+| Button | Purpose |
+|---|---|
+| **START ANALYSIS** | Runs the iterative analysis loop |
+| **Clear Chat** | Backs up and resets all runtime state |
+| **Upload Chat** | Imports a previously exported JSON backup |
+| **Download Chat** | Exports the session as a human-readable text log or a full restorable JSON backup |
+| **Review History** | Opens the Review page |
+
+### Config Graders Page
+
+| Control | Purpose |
+|---|---|
+| **Load Setting** | Select and load an existing grading rubric |
+| **Edit / Cancel** | Toggle edit mode for the grading keys table |
+| **Key Name** | Category name (auto-lowercased, spaces converted to underscores) |
+| **Rubric** | Free-text description of scoring criteria |
+| **Grader Model** | Select which small LLM evaluates this category |
+| **Weight %** | How much this category counts toward the overall score |
+| **Add / Remove Keys** | Add a row (max 8) or remove an existing one |
+| **Weight Total Indicator** | Live sum — green at 100%, red otherwise |
+| **Save Setting** | Persist the configuration (blocked if incomplete or named `default`) |
+
+### Review Page
+
+| Control | Purpose |
+|---|---|
+| **Chat List** | Browse all saved backups, newest first |
+| **Prompt Summary** | Scores, categories, models, and iterations for each prompt |
+| **Iteration Cards** | Layer 1A vs. 1B detail with winner, model, and runtime |
+| **Analyze Deeper** | Modal with average grade bar/radar charts, token usage chart, runtime chart, per-key charts, adjustable weights for what-if analysis, and the grader setting name from the original run |
+| **Load This Chat** | Restore a backup into the active session |
+| **Delete Chat** | Remove a backup file permanently |
+| **Upload** | Import and restore a JSON backup |
+
+---
+
+## Models and Providers
+
+Calls are routed automatically based on the model name:
+
+| Provider | Models | Transport |
+|---|---|---|
+| **Ollama** | All models not listed below (local inference) | `ollama.chat()`, threaded with timeout |
+| **Mistral API** | `mistral-small-2506`, `voxtral-mini-2507`, `open-mistral-nemo-2407` | REST with retry and backoff |
+| **Google Gemini API** | `gemini-2.5-flash`, `gemini-2.5-pro` | REST with retry |
+| **GLM-4 (HuggingFace)** | `glm-4-9b`, `glm-4-9b-chat` | Local `transformers`, cached, preloaded at startup |
+
+28 preconfigured models are available across layers, including gemma, granite, llama, qwen, deepseek-r1, deepseek-coder-v2, falcon3, phi4, devstral, solar, codellama, dolphin3, olmo2, starcoder2, and gpt-oss.
+
+---
+
+## Getting Started
+
+### Prerequisites
 
 - **Python 3.13+**
-- **[Ollama](https://ollama.com/)** installed and running (required for local model inference — most models route through Ollama)
-- A `.env` file with your credentials (see `.env.example` and the table below)
+- **[Ollama](https://ollama.com/)** installed and running (required for local model inference unless you configure cloud-only providers)
+- A `.env` file with your credentials (see below)
 
-## Environment Variables (`.env`)
+### Installation
+
+```bash
+git clone https://github.com/yuvhaim-gif/LLM_InSight.git
+cd LLM_InSight
+python -m venv venv
+source venv/bin/activate   # Linux / macOS
+venv\Scripts\activate      # Windows
+pip install -r requirements.txt
+cp .env.example .env       # then edit .env with your credentials
+```
+
+### Environment Variables
 
 Copy `.env.example` to `.env` and fill in your values.
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `APP_USER` | **Yes** | Login username |
-| `APP_PASS` | **Yes** | Login password |
-| `FLASK_SECRET` | **Yes** | Flask session secret key (any random string) |
-| `MISTRAL_API_KEY` | No | API key for Mistral models (`mistral-small-2506`, `voxtral-mini-2507`, `open-mistral-nemo-2407`). If omitted, Mistral models return errors when called |
-| `GOOGLE_API_KEY` | No | API key for Google Gemini models (`gemini-2.5-flash`, `gemini-2.5-pro`). If omitted, Gemini models return errors when called |
-| `LANGCHAIN_API_KEY` | No | API key for [LangSmith](https://smith.langchain.com/) tracing/observability. If omitted, tracing is disabled |
+| `APP_USER` | Yes | Login username |
+| `APP_PASS` | Yes | Login password |
+| `FLASK_SECRET` | Yes | Flask session secret (any random string) |
+| `MISTRAL_API_KEY` | No | Enables Mistral models. If omitted, those models return errors when called |
+| `GOOGLE_API_KEY` | No | Enables Google Gemini models. If omitted, those models return errors when called |
+| `LANGCHAIN_API_KEY` | No | Enables [LangSmith](https://smith.langchain.com/) tracing. If omitted, tracing is disabled |
 | `LANGCHAIN_PROJECT` | No | LangSmith project name (defaults to `llminsight`) |
 | `PORT` | No | Server port (defaults to `5000`) |
-| `SSL_CERT_PATH` | No | Path to SSL certificate (HTTPS) |
-| `SSL_KEY_PATH` | No | Path to SSL key (HTTPS) |
+| `SSL_CERT_PATH` / `SSL_KEY_PATH` | No | Paths to SSL certificate and key for HTTPS |
 
-**Minimal setup** — only Ollama models, no cloud APIs:
+**Minimal `.env`** (Ollama-only, no cloud APIs):
 
 ```
 APP_USER=admin
@@ -80,33 +191,11 @@ APP_PASS=changeme
 FLASK_SECRET=changeme
 ```
 
-The app starts with only the three required variables. Provider-specific keys are optional; the app prints a note at startup listing any missing optional keys. Models routed to a provider without a valid key will return error responses when called — the app itself continues to work normally with the remaining providers.
-
-### Disabling Providers You Don't Need
-
-If you only want to use a subset of providers, simply leave the corresponding API key out of `.env`:
-
-- **No Mistral models**: omit `MISTRAL_API_KEY`. Avoid selecting Mistral models (`mistral-small-2506`, `voxtral-mini-2507`, `open-mistral-nemo-2407`) in the UI. Change the default Layer 2 model in `config.py` (`DEFAULT_LAYER2_MODEL`) to an Ollama or Gemini model.
-- **No Google Gemini models**: omit `GOOGLE_API_KEY`. Avoid selecting Gemini models (`gemini-2.5-flash`, `gemini-2.5-pro`) in the UI.
-- **No LangSmith tracing**: omit `LANGCHAIN_API_KEY`. Tracing calls fail silently; the app works normally.
-- **No GLM-4 (HuggingFace) models**: GLM models require `transformers` and `torch`. To skip them: remove `glm-4-9b` and `glm-4-9b-chat` from the model lists in `config.py`, and optionally remove `transformers` and `torch` from `requirements.txt` to save disk space. The GLM preload thread at startup becomes a no-op if the models are not in the config.
-- **No Ollama**: Ollama is the default local provider. If you only want to use cloud APIs (Mistral/Gemini), remove the Ollama-only models from the model lists in `config.py` and remove `ollama` from `requirements.txt`. Note: the default Layer 1A, 1B, 0, and Layer 3 grader models all use Ollama, so you must also update `DEFAULT_LAYER1A_MODEL`, `DEFAULT_LAYER1B_MODEL`, `DEFAULT_LAYER0_MODEL`, and `LAYER3_GRADER_MODELS` in `config.py`.
-
-## Setup
-
-```bash
-git clone https://github.com/yuvhaim-gif/LLM_InSight.git
-cd LLM_InSight
-python -m venv venv
-source venv/bin/activate   # Linux/macOS
-venv\Scripts\activate      # Windows
-pip install -r requirements.txt
-cp .env.example .env       # Edit .env with your credentials
-```
+The app runs with just these three variables. Missing optional keys are noted at startup; models routed to a provider without a key return error responses, but the app itself continues to work normally.
 
 ### Pull Ollama Models
 
-Pull the default models used by each layer (skip if not using Ollama):
+Pull the default models used by each layer (skip any you don't plan to use):
 
 ```bash
 ollama pull gemma:7b-instruct-q4_K_M   # Layer 1A default
@@ -118,7 +207,7 @@ ollama pull qwen2.5:1.5b                # Layer 3 grader (conciseness, structure
 ollama pull llama3.2:3b                  # Layer 3 grader (creativity)
 ```
 
-You only need to pull models you plan to use. The full list of preconfigured models is in `config.py`.
+The full list of preconfigured models is in `config.py`.
 
 ### Run
 
@@ -128,7 +217,45 @@ python main.py
 
 Open `http://localhost:5000` and sign in with the credentials from your `.env` file.
 
-### Running Tests
+---
+
+## Disabling Providers You Don't Need
+
+If you only want to use a subset of providers, leave the corresponding API key out of `.env`:
+
+- **No Mistral**: omit `MISTRAL_API_KEY`. Avoid selecting Mistral models in the UI and update `DEFAULT_LAYER2_MODEL` in `config.py` to an Ollama or Gemini model.
+- **No Google Gemini**: omit `GOOGLE_API_KEY`. Avoid selecting Gemini models in the UI.
+- **No LangSmith**: omit `LANGCHAIN_API_KEY`. Tracing fails silently; the app works normally.
+- **No GLM-4**: remove `glm-4-9b` and `glm-4-9b-chat` from the model lists in `config.py`. Optionally remove `transformers` and `torch` from `requirements.txt` to save disk space.
+- **No Ollama**: remove Ollama-only models from the model lists in `config.py`, remove `ollama` from `requirements.txt`, and update the default model constants (`DEFAULT_LAYER1A_MODEL`, `DEFAULT_LAYER1B_MODEL`, `DEFAULT_LAYER0_MODEL`, `LAYER3_GRADER_MODELS`).
+
+---
+
+## Adding Your Own Models
+
+### New Ollama model
+
+1. Pull it: `ollama pull your-model-name`
+2. Add the model name to the appropriate list(s) in `config.py`
+3. It appears in the UI dropdowns immediately
+
+### New cloud API provider
+
+1. Add your API key to `.env` and load it in `secrets_config.py`
+2. Add a routing check and call function in `ai/api_calls.py` (follow the existing Gemini/Mistral pattern)
+3. Add the model names to the lists in `config.py`
+
+### New grader model
+
+Add the model name to `AVAILABLE_GRADER_MODELS` in `config.py`. The model must be available via Ollama. It will appear in the grader model dropdown on the Config Graders page.
+
+### Changing defaults
+
+Edit the `DEFAULT_*` constants in `config.py` (`DEFAULT_LAYER1A_MODEL`, `DEFAULT_LAYER1B_MODEL`, `DEFAULT_LAYER0_MODEL`, `DEFAULT_LAYER2_MODEL`, `LAYER3_GRADER_MODELS`).
+
+---
+
+## Running Tests
 
 ```bash
 pip install -r requirements-dev.txt
@@ -137,176 +264,69 @@ pytest tests/ -v --tb=short
 
 102 contract tests validate backup schema, restore behavior, advanced model map compatibility, auth matrix, and provider routing. Tests use monkeypatched temp directories and an isolated SQLite database — no production files are touched, no AI models are called, and no `.env` file is required.
 
-## Pages
+---
 
-| Page | Path | Purpose |
-|---|---|---|
-| **Login** | `/login` | Authentication with animated background |
-| **Main Analysis** | `/` | Run experiments, configure all selectors and toggles, view results and charts |
-| **Config Graders** | `/config_graders` | Create and edit grading rubrics (categories, rubric text, grader models, weights) |
-| **Review History** | `/review_chats` | Browse saved runs, load/delete/analyze past sessions, deeper analysis charts |
+## Persistence and Backup
 
-## Frontend Selectors and Controls
+- **Session state**: authentication, selected models, weights, toggles, prompt history, advanced model maps, and the active grader setting name are stored in the server-side session and a SQLite database.
+- **Runtime files**: `ledger.jsonl` (append-only event log), `iteration_history.json`, `best_best_layer1.json`, `console_output.txt`, and `graderdata/` (JSONL grader settings).
+- **Browser storage**: `localStorage` (domain filter, weight preset, system type) and `sessionStorage` (review-to-main handoff).
+- **Lifecycle**: startup, login, clear-chat, logout, exit, window close, and process signals each trigger backups of runtime files before clearing them.
+- **JSON export** (version 2.0): captures console output, prompt history, iteration history, best-best cache, ledger entries, and full session state. Restorable via upload or the Review page.
 
-### Main Page Selectors
-
-| Control | Location | What It Does |
-|---|---|---|
-| **Layer 0 Model** (Ideas) | Right sidebar | Selects the brainstorming model that runs before the loop |
-| **Answer Model 1** (Layer 1A) | Right sidebar | First answer model each iteration |
-| **Answer Model 2** (Layer 1B) | Right sidebar | Second answer model each iteration |
-| **Prompt Improver** (Layer 2) | Right sidebar | Model that rewrites prompts using grader feedback |
-| **Advanced panel** | Right sidebar (toggle) | Per-iteration model assignment for Layer 1A, 1B, and Layer 2. Locks main selectors when saved |
-| **Grader setting selector** | Weights area | Switch between saved grading rubrics |
-| **Config Graders link** | Weights area | Opens the rubric editor page |
-| **Weight inputs** | Top-left panel | Adjust category weights (auto-normalized, Apply/Reset buttons) |
-| **Advise Models by Domain** | Controls area | Visual filter for model dropdowns (Coding, Creative, Science, Experimental, Balanced) |
-| **Domain Selection** | Controls area | Weight profile preset (Balanced, Accuracy, Creativity, Conciseness) |
-| **Break Target Grade** | Controls area | Stop loop when this score is reached (1-100) |
-| **Iterations** | Controls area | Max refinement rounds per prompt (1-5) |
-| **Degradation Break** | Toggle | Stop when score drops from previous iteration |
-| **Change Prompt** | Toggle | Enable/disable Layer 2 prompt rewriting |
-| **Give Ideas** | Toggle | Enable/disable Layer 0 brainstorming |
-| **Last Best Answer Retention** | Toggle | Feed best answer as context into next iteration |
-| **Grade vs. Current/First Prompt** | Toggle | Graders judge against current or first prompt in session |
-| **System Profile** | Top-left corner | Filters model dropdowns by speed category (Simple hides slower/slow, Good hides slow, Super shows all). Browser-only |
-
-### Main Page Actions
-
-| Button | What It Does |
-|---|---|
-| **START ANALYSIS** | Runs the iterative analysis loop |
-| **Clear Chat** | Backs up and resets all runtime state |
-| **Upload Chat** | Imports a JSON backup file |
-| **Download Chat (Text)** | Exports human-readable log (not restorable) |
-| **Download Chat (JSON)** | Exports full backup (restorable) |
-| **Review History** | Opens the review page |
-
-### Config Graders Page
-
-| Control | What It Does |
-|---|---|
-| **Load Setting dropdown** | Select and load an existing grading rubric |
-| **Edit / Cancel** | Toggle edit mode for the grading keys table |
-| **Key Name field** | Category name (auto-lowercased, spaces to underscores) |
-| **Rubric field** | Free-text scoring criteria for the category |
-| **Grader Model dropdown** | Select grader model per category |
-| **Weight % field** | Weight as percentage (converted to 0-1 on save) |
-| **Add Grading Key** | Add a row (max 8 categories) |
-| **Remove** | Delete a category row |
-| **Weight total indicator** | Live sum pill (green at 100%, red otherwise) |
-| **Setting Name input** | Name for saving (auto-normalized) |
-| **Save Setting** | Persist the configuration (blocked if incomplete or `default`) |
-
-### Review Page
-
-| Control | What It Does |
-|---|---|
-| **Chat list** | Browse all saved backups from `~/Downloads`, newest first |
-| **Prompt summary** | Scores, categories, models, iterations per prompt |
-| **Iteration cards** | Layer 1A vs 1B detail with winner, model, runtime |
-| **Analyze Deeper** | Modal with average grade bar/radar charts, token usage chart, runtime chart, per-key charts, adjustable weights for what-if, grader setting name |
-| **Load This Chat** | Restore backup into active session (clears current data) |
-| **Delete Chat** | Remove backup file permanently |
-| **Upload** | Import and restore a JSON backup |
-
-## Loop Pipeline
-
-```
-Layer 0 (once, optional) -> [ Layer 1A -> Grade -> Layer 2 rewrite -> Layer 1B -> Grade -> pick winner ] x N
-```
-
-### Stop Conditions (first match wins)
-
-1. Best score reaches the target grade (default 100).
-2. Degradation break: score dropped from previous iteration (when enabled).
-3. Max iterations reached (default 5, max 5).
-
-## Models and Providers
-
-Calls are routed automatically by model name:
-
-| Provider | Models | Transport |
-|---|---|---|
-| Ollama | All models not listed below (local inference) | `ollama.chat()`, threaded with timeout |
-| Mistral API | `mistral-small-2506`, `voxtral-mini-2507`, `open-mistral-nemo-2407` | REST with retry + backoff |
-| Google Gemini API | `gemini-2.5-flash`, `gemini-2.5-pro` | REST with retry |
-| GLM-4 (HuggingFace) | `glm-4-9b`, `glm-4-9b-chat` | Local `transformers`, cached, preloaded at startup, unloaded on exit |
-
-28 preconfigured models available across layers, including gemma, granite, llama, qwen, deepseek-r1, deepseek-coder-v2, falcon3, phi4, devstral, solar, codellama, dolphin3, olmo2, starcoder2, and gpt-oss.
-
-## Dependencies and Tools
-
-| Package | Version | Purpose |
-|---|---|---|
-| [Flask](https://flask.palletsprojects.com/) | >=3.0 | Web framework, routing, sessions, template rendering |
-| [Pydantic](https://docs.pydantic.dev/) | >=2.0 | Data validation for Layer 2 response schemas (`Layer2Response`, `Layer2Critique`) |
-| [ollama](https://github.com/ollama/ollama-python) | >=0.4 | Python client for Ollama local inference (most models) |
-| [requests](https://requests.readthedocs.io/) | >=2.31 | HTTP client for Mistral and Google Gemini REST APIs |
-| [python-dotenv](https://github.com/theskumar/python-dotenv) | >=1.0 | Load `.env` file into environment variables |
-| [transformers](https://huggingface.co/docs/transformers/) | >=4.40 | HuggingFace model loading for GLM-4 (optional — only needed for GLM models) |
-| [torch](https://pytorch.org/) | >=2.2 | PyTorch backend for GLM-4 inference (optional — only needed for GLM models) |
-| [langsmith](https://docs.smith.langchain.com/) | >=0.1 | Tracing/observability via `@traceable` decorator (optional — falls back to no-op if missing) |
-| [pytest](https://docs.pytest.org/) | >=8.0 | Contract test suite (`requirements-dev.txt`, not installed in production) |
-| [Chart.js](https://www.chartjs.org/) | CDN | Frontend charts (bar, radar, line) in main and review pages |
-| [chartjs-plugin-datalabels](https://chartjs-plugin-datalabels.netlify.app/) | CDN | Data labels on Chart.js charts |
-
-To remove optional dependencies, see [Disabling Providers You Don't Need](#disabling-providers-you-dont-need).
-
-## Adding Your Own Models and APIs
-
-### Adding a new Ollama model
-
-1. Pull it: `ollama pull your-model-name`.
-2. Add the model name to the appropriate list(s) in `config.py` (`_CORE_MODELS`, `AVAILABLE_LAYER0_MODELS`, `AVAILABLE_LAYER2_MODELS`, etc.).
-3. The model is immediately available in the UI dropdowns.
-
-### Adding a new cloud API provider
-
-1. Add your API key to `.env` and load it in `secrets_config.py`.
-2. In `ai/api_calls.py`, add a routing check in `call_model()` (similar to the existing Gemini/Mistral checks) and implement a `call_yourprovider()` function that returns the standard `{ content, token_info }` format.
-3. Add the model names to the lists in `config.py`.
-4. Use the `_post_with_retry()` helper for REST APIs with rate limiting.
-
-### Adding a new grader model
-
-Add the model name to `AVAILABLE_GRADER_MODELS` in `config.py`. The model must be pullable via Ollama (graders use Ollama by default). Then it appears in the grader model dropdown on the Config Graders page.
-
-### Changing default models
-
-Edit the `DEFAULT_LAYER*` variables and `LAYER3_GRADER_MODELS` in `config.py`. These control which models are pre-selected when a new session starts.
-
-## Persistence
-
-- **Session**: auth, models, weights, toggles, prompt history, advanced maps, active grader setting name.
-- **Files**: `ledger.jsonl` (append-only events), `iteration_history.json`, `best_best_layer1.json`, `console_output.txt`, `runtime_state.db` (per-session state), `backup/` (timestamped copies), `graderdata/` (JSONL grader settings).
-- **Browser**: `localStorage` (domain filter, weight preset, system type), `sessionStorage` (review-to-main handoff).
-- **Lifecycle**: startup, login, clear-chat, logout, exit, window close, and process signals each back up runtime files and then clear a subset of them.
-
-## Backup Format
-
-JSON export (version 2.0) captures: console output, prompt history, iteration history, best-best cache, ledger entries, full session state (models, weights, toggles, advanced maps, grader setting name). Restorable via upload or review page load.
+---
 
 ## Observability
 
-LangSmith/LangChain tracing on all AI layers via `@traceable` decorators. Requires `LANGCHAIN_API_KEY` in `.env`. If the key is missing or invalid, tracing is disabled and the app continues to function normally.
+LangSmith/LangChain tracing is available on all AI layers via `@traceable` decorators. Set `LANGCHAIN_API_KEY` in `.env` to enable it. If the key is missing or invalid, tracing is disabled and the app continues to function normally.
 
-## Project Map
+---
 
-- **App entry point**: `main.py`
-- **Configuration**: `config.py` (models, paths, weights), `secrets_config.py` (credentials via `.env`), `graderdata/` (JSONL grader settings)
-- **Routes**: `routes/web_routes.py`, `routes/api_routes.py`, `routes/review_routes.py`
-- **AI pipeline**: `ai/iterative_loop.py`, `ai/layer0.py`, `ai/layer1.py`, `ai/layer2.py`, `ai/layer3.py`, `ai/api_calls.py`
-- **Data models**: `models.py` (Pydantic: `Layer2Response`, `Layer2Critique`)
-- **Utilities**: `utils/session.py`, `utils/file_io.py`, `utils/common.py`, `utils/text_processing.py`, `utils/validation.py`, `utils/grader_settings.py`
-- **State**: `state.py` (hybrid: per-session state via SQLite, GLM cache in-memory), `db.py` (SQLite backend for per-session runtime state)
-- **Tests**: `tests/` (pytest contract tests: backup schema, restore behavior, advanced map compat, auth matrix, provider routing), `requirements-dev.txt`
-- **Frontend**: `templates/` (login, main, review, config_graders), `templates/partials/` (shared Jinja2 includes and macros), `static/css/shared.css` (common base styles), `static/css/` (page-specific overrides), `static/js/`
+## Project Structure
 
-## Documentation
+| Path | Purpose |
+|---|---|
+| `main.py` | Application entry point |
+| `config.py` | Models, paths, default weights |
+| `secrets_config.py` | Credentials loaded from `.env` |
+| `graderdata/` | JSONL grader setting files |
+| `routes/` | `web_routes.py`, `api_routes.py`, `review_routes.py` |
+| `ai/` | `iterative_loop.py`, `layer0.py`, `layer1.py`, `layer2.py`, `layer3.py`, `api_calls.py` |
+| `models.py` | Pydantic schemas (`Layer2Response`, `Layer2Critique`) |
+| `utils/` | `session.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py` |
+| `state.py`, `db.py` | Hybrid state management (SQLite + in-memory) |
+| `templates/` | Jinja2 templates (login, main, review, config_graders) with shared partials |
+| `static/` | CSS, JavaScript, and assets |
+| `tests/` | Pytest contract tests |
 
-- [ARCHITECTURE.md](./docs/ARCHITECTURE.md) — system design and component layout
-- [IMPLEMENTATION.md](./docs/IMPLEMENTATION.md) — route contracts, JSON schemas, layer behavior
-- [REFACTORING.md](./docs/REFACTORING.md) — maintenance guidance and implementation notes
-- [user guide.md](./docs/user%20guide.md) — end-user walkthrough
-- [LICENSE](./LICENSE) — MIT license
+---
+
+## Dependencies
+
+| Package | Purpose |
+|---|---|
+| [Flask](https://flask.palletsprojects.com/) | Web framework, routing, sessions, template rendering |
+| [Pydantic](https://docs.pydantic.dev/) | Data validation for Layer 2 response schemas |
+| [ollama](https://github.com/ollama/ollama-python) | Python client for Ollama local inference |
+| [requests](https://requests.readthedocs.io/) | HTTP client for Mistral and Gemini REST APIs |
+| [python-dotenv](https://github.com/theskumar/python-dotenv) | Load `.env` into environment variables |
+| [transformers](https://huggingface.co/docs/transformers/) | HuggingFace model loading for GLM-4 (optional) |
+| [torch](https://pytorch.org/) | PyTorch backend for GLM-4 inference (optional) |
+| [langsmith](https://docs.smith.langchain.com/) | Tracing and observability (optional) |
+| [Chart.js](https://www.chartjs.org/) | Frontend charts (bar, radar, line) via CDN |
+| [pytest](https://docs.pytest.org/) | Test suite (dev dependency) |
+
+---
+
+## Further Documentation
+
+- [Architecture](./docs/ARCHITECTURE.md) — system design and component layout
+- [Implementation](./docs/IMPLEMENTATION.md) — route contracts, JSON schemas, layer behavior
+- [Refactoring Notes](./docs/REFACTORING.md) — maintenance guidance and implementation notes
+- [User Guide](./docs/user%20guide.md) — end-user walkthrough
+
+---
+
+## License
+
+This project is released under the [MIT License](./LICENSE).

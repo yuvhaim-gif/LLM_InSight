@@ -44,6 +44,9 @@ AGENTS.md
 graderdata/*
 !graderdata/default.jsonl
 
+# Large original video (use screenshots/demo.mp4 instead)
+screenshots/Recording*.mp4
+
 # OS
 Thumbs.db
 Desktop.ini
