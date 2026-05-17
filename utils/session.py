@@ -53,8 +53,13 @@ def get_session_layer2_model():
     return _get_session_model('layer2_model', DEFAULT_LAYER2_MODEL, 'Layer2')
 
 def get_layer3_grader_models():
-    from utils.grader_settings import get_grader_config
+    from utils.grader_settings import get_grader_config, grader_setting_exists
     gsn = session.get('grader_setting_name', 'default')
+    if gsn != 'default' and not grader_setting_exists(gsn):
+        session_graders = session.get('layer3_graders')
+        if session_graders and isinstance(session_graders, dict):
+            _safe_log(f"[Model] Using Layer3 graders from session (setting '{gsn}' not found on disk): {session_graders}")
+            return session_graders
     config = get_grader_config(gsn)
     graders = config.get('grader_models', dict(LAYER3_GRADER_MODELS))
     _safe_log(f"[Model] Using Layer3 graders ('{gsn}'): {graders}")

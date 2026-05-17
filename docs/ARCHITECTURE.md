@@ -13,17 +13,17 @@ How the demo is structured — components, data flow, and persistence. The syste
 | API routes | `routes/api_routes.py` | Auth, model/weight/toggle updates, grader settings CRUD, progress, backup |
 | Review routes | `routes/review_routes.py` | Saved-chat browsing, load, delete, upload, backup analysis |
 | Blueprint registration | `routes/__init__.py` | Registers `api_bp` and `main_bp` |
-| Loop orchestrator | `ai/iterative_loop.py` | Runs the full iteration pipeline per prompt. Token usage accumulated incrementally via `_merge_token_usage` (no post-loop scan). Session ID cached in thread-local at loop entry |
+| Loop orchestrator | `ai/iterative_loop.py` | Runs the full iteration pipeline per prompt. Token usage accumulated incrementally via `_merge_token_usage` across all 6 layers (layer0, layer1a, layer1b, layer2, layer3a, layer3b), including Layer 3's nested per-category structure (no post-loop scan). Session ID cached in thread-local at loop entry |
 | Layer 0 | `ai/layer0.py` | Brainstorming ideas (optional, runs once before loop) |
 | Layer 1 | `ai/layer1.py` | Answer generation (two variants: original + improved) |
 | Layer 2 | `ai/layer2.py` | Prompt rewriting using grader feedback, weights, and context |
 | Layer 3 | `ai/layer3.py` | Parallel multi-category grading with retries (1-8 configurable categories) |
-| Provider routing | `ai/api_calls.py` | Routes calls to Ollama, Mistral, Gemini, or GLM-4 |
+| Provider routing | `ai/api_calls.py` | Routes calls to Ollama, Mistral, Gemini, or GLM-4. When Ollama is not installed/importable, returns `[OLLAMA_ERROR]` prefix so the error is correctly detected by `is_error_response()` and Layer 3 grading is skipped |
 | Data models | `models.py` | Pydantic: `Layer2Response`, `Layer2Critique` |
-| Session helpers | `utils/session.py` | Session accessors, advanced mode detection, model selection tracking. Verbose accessor logs use `logging.debug` (not console print) |
-| File I/O | `utils/file_io.py` | Ledger, history, backup, console output, chat JSON export |
+| Session helpers | `utils/session.py` | Session accessors, advanced mode detection, model selection tracking. Verbose accessor logs use `logging.debug` (not console print). `get_layer3_grader_models()` falls back to session-stored graders when the named grader setting file is missing on disk (e.g., after restoring a backup from another machine) |
+| File I/O | `utils/file_io.py` | Ledger, history, backup, console output, chat JSON export. `backup_chat_json` guards session access with `has_request_context()` so exit-time backups succeed with file-based data when no Flask request context is available |
 | Text processing | `utils/text_processing.py` | Console parsing, similarity, deduplication, answer extraction. Pre-compiled regex constants for HTML tags, horizontal rules, whitespace, iteration/prompt markers. Batched `_CLEAN_REPLACEMENTS` tuple for `clean_answer_text` |
-| Common utilities | `utils/common.py` | Scoring, JSON parsing, error detection, `@traceable` wrapper, `ERROR_PREFIXES` constant, pre-compiled regex for code fences and JSON extraction |
+| Common utilities | `utils/common.py` | Scoring, JSON parsing, error detection, `@traceable` wrapper, `ERROR_PREFIXES` constant, pre-compiled regex for code fences and JSON extraction. `create_failed_grade_entry` accepts optional `score_weights` to ensure correct score computation with custom grader keys |
 | Validation | `utils/validation.py` | Input/integer/float/model validators |
 | State database | `db.py` | SQLite-backed per-session state (iteration counter, processing flag, model counter) with thread-safe access. `_known_sessions` set cache skips redundant existence checks |
 | Runtime state | `state.py` | Hybrid state module: delegates per-session serializable state to SQLite via `db.py`, keeps GLM cache/lock/cancel in-memory. Thread-local session ID cache (`set_cached_session_id`/`clear_cached_session_id`) avoids repeated Flask session lookups during loop runs |
@@ -171,9 +171,9 @@ The Review page (`/review_chats`) serves as a log and deeper analysis tool:
 | Login | all files + chat JSON | console, ledger, best-best. Reset per-session state |
 | Clear Chat | all files + chat JSON | all four working files. Reset per-session state |
 | Logout | all files + chat JSON | all four working files. Reset per-session state |
-| Exit | all files + chat JSON | ledger, best-best, iteration history. Clean up all session state rows |
+| Exit | all files + chat JSON (session data omitted — only file-based data backed up since no Flask request context is available at exit time) | ledger, best-best, iteration history. Clean up all session state rows |
 | Window close | -- | -- (sends `/shutdown-notify` via `sendBeacon`) |
-| Signal (SIGINT/SIGTERM) | all files + chat JSON (via atexit) | ledger, best-best, iteration history |
+| Signal (SIGINT/SIGTERM) | all files + chat JSON (via atexit; session data omitted — same as Exit) | ledger, best-best, iteration history |
 
 GLM models are loaded once at startup and unloaded on exit or process signal, releasing GPU/CPU resources.
 

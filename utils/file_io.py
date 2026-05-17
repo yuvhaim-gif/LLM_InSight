@@ -153,14 +153,16 @@ def backup_chat_json(prefix: str):
             except Exception as e:
                 logging.debug(f"Error reading ledger for backup: {e}")
         
-        chat_data = {
-            "console_output": console_output,
-            "prompt_history": session.get('prompt_history', []) if 'prompt_history' in session else [],
-            "all_prompt_results": session.get('all_prompt_results', []) if 'all_prompt_results' in session else [],
-            "iteration_history": load_json(ITERATION_HISTORY_FILE) or {},
-            "best_best_cache": load_json(BESTBEST_CACHE) or {},
-            "ledger_entries": ledger_entries,
-            "session_data": {
+        try:
+            from flask import has_request_context
+            has_ctx = has_request_context()
+        except Exception:
+            has_ctx = False
+
+        if has_ctx:
+            session_prompt_history = session.get('prompt_history', [])
+            session_all_prompt_results = session.get('all_prompt_results', [])
+            session_data = {
                 "current_weights": get_session_weights(),
                 "layer1a_model": get_session_layer1a_model(),
                 "layer1b_model": get_session_layer1b_model(),
@@ -178,7 +180,20 @@ def backup_chat_json(prefix: str):
                 "grader_setting_name": get_grader_setting_name(),
                 "min_grade": session.get('min_grade', 100),
                 "max_iterations": session.get('max_iterations', 5)
-            },
+            }
+        else:
+            session_prompt_history = []
+            session_all_prompt_results = []
+            session_data = {}
+
+        chat_data = {
+            "console_output": console_output,
+            "prompt_history": session_prompt_history,
+            "all_prompt_results": session_all_prompt_results,
+            "iteration_history": load_json(ITERATION_HISTORY_FILE) or {},
+            "best_best_cache": load_json(BESTBEST_CACHE) or {},
+            "ledger_entries": ledger_entries,
+            "session_data": session_data,
             "timestamp": utc_now_iso(),
             "version": "2.0"
         }

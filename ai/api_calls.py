@@ -52,7 +52,7 @@ def is_error_response(response: Union[str, Dict]) -> bool:
 def call_ollama(model: str, messages: List[dict], timeout: int = 300) -> Dict:
     if chat is None: 
         logging.info(f"[OLLAMA_SKIP] Chat not available - skipping model '{model}'")
-        return _make_response("[DUMMY ANSWER - Ollama not available]", tool="ollama")
+        return _make_response("[OLLAMA_ERROR]: Ollama chat module not available - model skipped", tool="ollama")
     
     result = {"content": None, "error": None, "completed": False, "start_time": None, "input_tokens": 0, "output_tokens": 0}
     

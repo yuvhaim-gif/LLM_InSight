@@ -103,13 +103,13 @@ def is_layer1_error_or_timeout(layer1_entry: dict) -> bool:
         return True
     return str(reply).startswith(ERROR_PREFIXES)
 
-def create_failed_grade_entry(layer1_entry: dict, grade_tag: str, combined_prompts: List[str], prompt_num: int, active_keys: list = None) -> dict:
+def create_failed_grade_entry(layer1_entry: dict, grade_tag: str, combined_prompts: List[str], prompt_num: int, active_keys: list = None, score_weights: dict = None) -> dict:
     from config import CATEGORY_WEIGHTS
     if active_keys:
         default_grade = {k: 1 for k in active_keys}
     else:
         default_grade = {k: 1 for k in CATEGORY_WEIGHTS}
-    overall = compute_score(default_grade)
+    overall = compute_score(default_grade, weights=score_weights)
     
     graded_entry = layer1_entry.copy()
     graded_entry.update({

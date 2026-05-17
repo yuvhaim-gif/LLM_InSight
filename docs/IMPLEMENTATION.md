@@ -105,16 +105,16 @@ Route contracts, runtime behavior, JSON schemas, configuration, and frontend int
 3. Per iteration:
    - Resolve model (advanced map override or session default).
    - Layer 1A: answer with original prompt (+ optional accumulated context).
-   - Layer 3: grade Layer 1A (or assign score 1 on Layer 1 error/timeout).
+   - Layer 3: grade Layer 1A (or assign score 1 on Layer 1 error/timeout, using session weights for correct score computation with custom grader keys).
    - Layer 2: rewrite prompt (when enabled) using grader feedback, weights, best answers, micro-replies, and context.
    - Layer 1B: answer with rewritten prompt (or original if Layer 2 off/failed).
-   - Layer 3: grade Layer 1B (same fallback logic).
+   - Layer 3: grade Layer 1B (same fallback logic with session weights).
    - Pick winner (`improved` wins ties for iteration best selection and recorded winner).
    - Record A/B test result (original score, improved score, winner).
    - Persist iteration data.
 4. Stop on first match: score >= `min_grade`, degradation break (score dropped), or `max_iterations` reached.
 5. Mark best-best/ties, save to `iteration_history.json`, `best_best_layer1.json`, and ledger.
-6. Token usage accumulated incrementally per iteration via `_merge_token_usage` (no post-loop scan). Final totals written to all entries and saved with history.
+6. Token usage accumulated incrementally per iteration via `_merge_token_usage` across all 6 layers — layer0, layer1a, layer1b, layer2 (flat structure) and layer3a, layer3b (nested per-category dicts). No post-loop scan. Final totals written to all entries and saved with history.
 
 ## Layer Behavior
 
@@ -170,7 +170,7 @@ Route contracts, runtime behavior, JSON schemas, configuration, and frontend int
 
 All return `{ content, token_info: { tool, input_tokens, output_tokens, total_tokens } }`.
 
-Error responses use standardized prefixes: `[OLLAMA_TIMEOUT]`, `[OLLAMA_ERROR]`, `[GOOGLE_TIMEOUT]`, `[GOOGLE_ERROR]`, `[MISTRAL_TIMEOUT]`, `[MISTRAL_ERROR]`, `[GLM_TIMEOUT]`, `[GLM_ERROR]`.
+Error responses use standardized prefixes: `[OLLAMA_TIMEOUT]`, `[OLLAMA_ERROR]`, `[GOOGLE_TIMEOUT]`, `[GOOGLE_ERROR]`, `[MISTRAL_TIMEOUT]`, `[MISTRAL_ERROR]`, `[GLM_TIMEOUT]`, `[GLM_ERROR]`. When Ollama is not installed or importable, the `[OLLAMA_ERROR]` prefix is returned so the error is correctly detected and Layer 3 grading is skipped.
 
 ## Configuration
 
@@ -322,6 +322,8 @@ Add the model name to `AVAILABLE_GRADER_MODELS` in `config.py`. Graders route th
   "version": "2.0"
 }
 ```
+
+Note: When the backup runs outside a Flask request context (exit, signal handlers), `session_data`, `prompt_history`, and `all_prompt_results` will be empty (`{}`, `[]`, `[]` respectively). File-based data (console_output, iteration_history, best_best_cache, ledger_entries) is always included.
 
 ### IterationData
 

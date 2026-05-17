@@ -12,7 +12,7 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
 - Grader setting JSONL file format: one JSON object per line with `key`, `rubric`, `grader`, `weight` fields.
 - `grader_setting_name` in session and backup payload.
 - Provider routing logic in `ai/api_calls.py` (model name determines provider).
-- Standardized provider response format `{ content, token_info }`.
+- Standardized provider response format `{ content, token_info }`. Ollama unavailability returns `[OLLAMA_ERROR]` prefix (not dummy text).
 - Error response prefixes: `[OLLAMA_TIMEOUT]`, `[OLLAMA_ERROR]`, `[GOOGLE_TIMEOUT]`, `[GOOGLE_ERROR]`, `[MISTRAL_TIMEOUT]`, `[MISTRAL_ERROR]`, `[GLM_TIMEOUT]`, `[GLM_ERROR]`.
 - A/B test result structure per iteration: `original_score`, `improved_score`, `winner`.
 - Weight normalization behavior: auto-normalized to sum 1, cleared when switching grader settings.
@@ -45,7 +45,7 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
 - `/iteration-wait` mirrors `/iteration` with no blocking/polling behavior.
 - Review parsing includes compatibility branches for older backup formats.
 - Layer 2 receives weights and uses them as optimization priorities to focus prompt improvement on weak high-weight areas.
-- Layer 3 rubrics and grader models are loaded from the active grader setting at grade time, not cached at session start.
+- Layer 3 rubrics and grader models are loaded from the active grader setting at grade time, not cached at session start. If the named setting file is missing on disk (e.g., after restoring a backup from another machine), `get_layer3_grader_models()` falls back to session-stored graders. If the file exists, it remains the source of truth.
 - Weight priority chain: user-applied custom weights -> active grader config defaults -> hardcoded `CATEGORY_WEIGHTS`.
 - Config Graders: key names and setting names are normalized (lowercase, underscores). Duplicate key detection prevents saves with repeated key names.
 - Weights entered as percentages on Config Graders page, converted to 0-1 decimals on save, converted back on load.
@@ -62,6 +62,7 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
 3. ~~Extract repeated payload builders into shared utilities.~~ ✅ Done — duplicated CSS (reset, body gradient, star overlay, keyframes, footer, logo-circle, deeper-analysis modal) extracted to `static/css/shared.css`. Repeated HTML fragments (head meta/links, footer, logo badge, deeper-analysis modal, model selector blocks, cloud icon logic) extracted to Jinja2 partials in `templates/partials/`. Page-specific CSS files retain only override rules. All templates use `{% include %}` and Jinja macros. No visual, JS, route, or backend changes.
 4. ~~Add contract tests: backup schema, restore behavior, advanced map compatibility, auth matrix, provider routing.~~ ✅ Done — 102 contract tests in `tests/` covering backup schema (11), restore behavior (15), advanced map compatibility (8), auth matrix (40), and provider routing (28). Uses `pytest` with monkeypatched temp directories and in-memory DB. No production code changes. Dev dependency in `requirements-dev.txt`.
 5. ~~Optimize internals (loop granularity, parser boundaries, logging, DB micro-optimization).~~ ✅ Done — 18 optimizations across 8 files. Loop: removed per-iteration `gc.collect()`, replaced post-loop `_aggregate_token_usage` with incremental `_merge_token_usage`, removed duplicate best-best cache write on min_grade break, added thread-local session ID cache in `state.py`, eliminated redundant `.copy()` on read-only iteration refs, consolidated degradation score comparison. Parsers: hoisted `ERROR_PREFIXES` tuple to module-level constant in `common.py` (shared by `api_calls.py`), pre-compiled 9 regex patterns in `text_processing.py` and 2 in `common.py`, used `str.startswith(tuple)` in all error-detection functions, batched `clean_answer_text` replacements via `_CLEAN_REPLACEMENTS` tuple. Logging: replaced `_safe_print` with `_safe_log` (logging.debug) in `session.py`, downgraded debug prints in `iterative_loop.py`, consolidated Layer 1 model resolution to single summary line, condensed per-iteration header to one combined print, removed standalone `sys.stdout.flush()` after prints (kept before blocking `call_model`), removed 7 duplicate `logging.info` calls covered by `print()`. DB: added `_known_sessions` set cache in `db.py` to skip redundant `_ensure_row` SELECT. All 102 contract tests pass. No changes to execution order, data schemas, file outputs, API contracts, routes, or frontend behavior.
+6. ~~Backend hardening (correctness fixes for edge-case call paths).~~ ✅ Done — 5 hardening fixes across 5 files, all backend-only with no process flow or frontend changes. (1) `api_calls.py`: Ollama unavailability now returns `[OLLAMA_ERROR]` prefix instead of `[DUMMY ANSWER]`, so `is_error_response()` correctly detects it and Layer 3 grading is skipped. (2) `common.py` + `iterative_loop.py`: `create_failed_grade_entry` accepts `score_weights` parameter, passed from the two call sites in the loop, ensuring correct score computation (score 1 instead of ~50) when custom grader keys are active. (3) `file_io.py`: `backup_chat_json` guards session access with `has_request_context()`, so exit-time and signal-handler backups succeed with file-based data instead of silently failing. (4) `iterative_loop.py`: `_merge_token_usage` expanded to process all 6 layers (layer0, layer1a, layer1b, layer2, layer3a, layer3b), including Layer 3's nested per-category structure. (5) `session.py`: `get_layer3_grader_models()` falls back to session-stored graders when the named grader setting file is missing on disk. All changes verified via syntax compilation and functional tests. No changes to execution order, data schemas, file outputs, API contracts, routes, or frontend behavior.
 
 ## Regression Checklist
 
@@ -89,6 +90,11 @@ Guidance for maintaining and evolving the demo without breaking existing behavio
 - Per-session state isolation: two simultaneous browser sessions do not interfere with each other's iteration counters or processing flags.
 - Login, logout, and clear chat reset the session's state DB row before clearing the Flask session.
 - Server restarts cleanly: old DB rows are cleaned up at startup (24h) and exit (all rows).
+- When Ollama is not installed, error is correctly detected (`[OLLAMA_ERROR]` prefix) and Layer 3 grading is skipped with score 1.
+- Failed iterations with custom grader keys produce score ~1 (not ~50) via `create_failed_grade_entry` with session weights.
+- Exit-time and signal-handler backups produce valid JSON with file-based data even when no Flask request context exists (session_data is empty `{}`).
+- Token usage summaries include all 6 layers (layer0, layer1a, layer1b, layer2, layer3a, layer3b) in `tools_token_usage`.
+- Restoring a backup with a grader setting name not present on disk uses session-stored graders as fallback; if the file does exist, it takes priority.
 
 ## References
 

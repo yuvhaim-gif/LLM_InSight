@@ -35,9 +35,8 @@ from ai.layer3 import layer3_grade
 # Environment variables for LangSmith now handled in config.py
 
 def _merge_token_usage(tools_usage: dict, token_data: dict) -> None:
-    for layer_name in ("layer1a", "layer1b"):
-        layer_tokens = token_data.get(layer_name, {})
-        if layer_tokens and "tool" in layer_tokens:
+    def _merge_flat(layer_tokens):
+        if layer_tokens and isinstance(layer_tokens, dict) and "tool" in layer_tokens:
             tool = layer_tokens.get("tool", "unknown")
             entry = tools_usage.setdefault(tool, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
             inp = layer_tokens.get("input_tokens", 0)
@@ -45,6 +44,15 @@ def _merge_token_usage(tools_usage: dict, token_data: dict) -> None:
             entry["input_tokens"] += inp
             entry["output_tokens"] += out
             entry["total_tokens"] += inp + out
+
+    for layer_name in ("layer0", "layer1a", "layer1b", "layer2"):
+        _merge_flat(token_data.get(layer_name, {}))
+
+    for layer_name in ("layer3a", "layer3b"):
+        layer3_data = token_data.get(layer_name, {})
+        if isinstance(layer3_data, dict):
+            for category, cat_tokens in layer3_data.items():
+                _merge_flat(cat_tokens)
 
 @traceable(run_type="chain", name="Iterative Analysis Loop")
 def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5, 
@@ -185,7 +193,7 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
         if is_layer1_error_or_timeout(orig):
             logging.error(f"[LAYER1A_ERROR] Layer1A failed/timeout, skipping Layer3 grading")
             print(f"⚠️ [LAYER3_SKIP] Layer1A failed/timeout - Layer3 will not run, assigning grade 1")
-            graded_orig = create_failed_grade_entry(orig, "original", prompt_history, current_prompt_num, active_keys=active_keys)
+            graded_orig = create_failed_grade_entry(orig, "original", prompt_history, current_prompt_num, active_keys=active_keys, score_weights=session_weights)
         else:
             print(f"⏳ [LAYER3_GRADE_START] Starting Layer3 grading for Layer1A...")
             # Tracing Layer 3 Grade A
@@ -262,7 +270,7 @@ def iterative_loop(prompt: str, min_grade: float, max_iterations: int = 5,
         if is_layer1_error_or_timeout(improved):
             logging.error(f"[LAYER1B_ERROR] Layer1B failed/timeout, skipping Layer3 grading")
             print(f"⚠️ [LAYER3_SKIP] Layer1B failed/timeout - Layer3 will not run, assigning grade 1")
-            graded_improved = create_failed_grade_entry(improved, "improved", prompt_history, current_prompt_num, active_keys=active_keys)
+            graded_improved = create_failed_grade_entry(improved, "improved", prompt_history, current_prompt_num, active_keys=active_keys, score_weights=session_weights)
         else:
             print(f"⏳ [LAYER3_GRADE_START] Starting Layer3 grading for Layer1B...")
             # Tracing Layer 3 Grade B
