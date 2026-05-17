@@ -2,8 +2,8 @@
 
 > A browser-based tool for iterative prompt optimization, multi-model A/B testing, and structured LLM evaluation using configurable grading rubrics. Built as a personal testing rig and released in the hope that others may find it useful, adapt it, or take the ideas further.
 
-[![Demo](screenshots/Main%20page.png)](screenshots/demo.mp4)
-*Click the image to watch a short demo walkthrough (~1.5 min).*
+![Demo](screenshots/demo.gif)
+*Demo walkthrough (~1.5 min)*
 
 ---
 

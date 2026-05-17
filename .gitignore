@@ -44,8 +44,8 @@ AGENTS.md
 graderdata/*
 !graderdata/default.jsonl
 
-# Large original video (use screenshots/demo.mp4 instead)
-screenshots/Recording*.mp4
+# Large video files (GIF used for README demo)
+screenshots/*.mp4
 
 # OS
 Thumbs.db
