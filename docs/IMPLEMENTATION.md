@@ -479,7 +479,7 @@ CSS load order: `shared.css` (via `_head_common.html`) → page-specific CSS. Th
 - Animated background with gradient and floating elements.
 - Circular login container with username/password fields.
 - Error message display with shake animation on invalid credentials.
-- Footer with demo/rights notice via `_footer.html` partial.
+- Footer with production warning and rights notice via `_footer.html` partial.
 
 ## References
 

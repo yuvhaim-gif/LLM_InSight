@@ -1,15 +1,15 @@
 # LLM InSights
 
-> A browser-based tool for iterative prompt optimization, multi-model A/B testing, and structured LLM evaluation using configurable grading rubrics. Built as a personal testing rig and released in the hope that others may find it useful, adapt it, or take the ideas further.
+> A browser-based tool for iterative prompt optimization, multi-model A/B testing, and structured LLM evaluation using configurable grading rubrics.
 
-![Demo](screenshots/demo.gif)
-*Demo walkthrough (~1.5 min)*
+![Walkthrough](screenshots/demo.gif)
+*Walkthrough (~1.5 min)*
 
 ---
 
 ## What It Does
 
-You write a prompt. The system sends it to two competing LLM models, grades both answers against a configurable rubric, optionally rewrites the prompt using grader feedback, and repeats the cycle — keeping the best answer each round. Every variable is controlled from the UI: which models compete, what the rubric measures, how categories are weighted, and when the loop stops.
+You write a prompt. The tool sends it to two competing LLM models, grades both answers against a configurable rubric, optionally rewrites the prompt using grader feedback, and repeats the cycle — keeping the best answer each round. Every variable is controlled from the UI: which models compete, what the rubric measures, how categories are weighted, and when the loop stops.
 
 Each run produces a structured record of prompts, answers, scores, and model metadata that can double as refined synthetic data.
 

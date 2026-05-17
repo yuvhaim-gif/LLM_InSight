@@ -2,7 +2,7 @@
 
 ## What Is This?
 
-A demo tool for creating your own grading rubric, automatically optimizing prompts, A/B testing models, and refining synthetic data — all from the browser. It sends your prompt to two competing models, grades their answers across configurable quality categories, rewrites the prompt to improve results, and repeats until a target score is reached. Everything is saved for review, analysis, and export.
+A tool for creating your own grading rubric, automatically optimizing prompts, A/B testing models, and refining synthetic data — all from the browser. It sends your prompt to two competing models, grades their answers across configurable quality categories, rewrites the prompt to improve results, and repeats until a target score is reached. Everything is saved for review, analysis, and export.
 
 ## Quick Start
 
@@ -298,7 +298,7 @@ All other controls (models, weights after Apply, toggles, loop settings, grader 
 
 ## Notes
 
-- This is a demo and research tool, not a production system.
+- This is a research and experimentation tool.
 - Logging out ends the session and automatically backs up state.
 - Clear Chat removes runtime state only after creating a backup.
 - Models route to their provider (Ollama, Mistral, Gemini, GLM) based on model name.

@@ -1,6 +1,6 @@
 # Architecture
 
-How the demo is structured — components, data flow, and persistence. The system enables creating custom grading rubrics, automatic prompt optimization, A/B model testing, and synthetic data refinement, all controlled through frontend selectors and pages.
+How the tool is structured — components, data flow, and persistence. It enables creating custom grading rubrics, automatic prompt optimization, A/B model testing, and synthetic data refinement, all controlled through frontend selectors and pages.
 
 ## Components
 
