@@ -1,6 +1,9 @@
 # LLM InSights
 
-> A browser-based tool for iterative prompt optimization, multi-model A/B testing, and structured LLM evaluation using configurable grading rubrics.
+> A browser-based tool for iterative prompt optimization, multi-model A/B testing, and structured LLM evaluation — compare models, refine prompts automatically, and generate scored synthetic data.
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 
 ![Walkthrough](screenshots/demo.gif)
 *Walkthrough (~1.5 min)*
@@ -27,8 +30,17 @@ Each run produces a structured record of prompts, answers, scores, and model met
 
 ## How the Pipeline Works
 
-```
-Layer 0 (once, optional)  -->  [ Layer 1A  -->  Grade  -->  Layer 2 rewrite  -->  Layer 1B  -->  Grade  -->  Pick winner ]  x N iterations
+```mermaid
+flowchart LR
+    L0["Layer 0\n(brainstorm, optional)"] --> loop
+    subgraph loop ["Repeat × N iterations"]
+        direction LR
+        L1A["Layer 1A\n(answer)"] --> G1["Layer 3\n(grade)"]
+        G1 --> L2["Layer 2\n(rewrite prompt)"]
+        L2 --> L1B["Layer 1B\n(answer)"]
+        L1B --> G2["Layer 3\n(grade)"]
+        G2 --> W["Pick winner"]
+    end
 ```
 
 | Layer | Role |
@@ -151,7 +163,7 @@ Calls are routed automatically based on the model name:
 
 ### Prerequisites
 
-- **Python 3.13+**
+- **Python 3.10+**
 - **[Ollama](https://ollama.com/)** installed and running (required for local model inference unless you configure cloud-only providers)
 - A `.env` file with your credentials (see below)
 
@@ -166,6 +178,37 @@ venv\Scripts\activate      # Windows
 pip install -r requirements.txt
 cp .env.example .env       # then edit .env with your credentials
 ```
+
+> **Note:** The file `secrets_config.py` is required by the application but is excluded from version control via `.gitignore`. If it is missing after cloning, create it in the project root with the following content:
+>
+> ```python
+> import os
+> import sys
+> from dotenv import load_dotenv
+>
+> load_dotenv()
+>
+> _REQUIRED = ["APP_USER", "APP_PASS", "FLASK_SECRET"]
+> _OPTIONAL = ["MISTRAL_API_KEY", "GOOGLE_API_KEY", "LANGCHAIN_API_KEY"]
+>
+> _missing = [k for k in _REQUIRED if k not in os.environ]
+> if _missing:
+>     print(f"ERROR: Missing required environment variables: {', '.join(_missing)}", file=sys.stderr)
+>     print("Copy .env.example to .env and fill in your values.", file=sys.stderr)
+>     sys.exit(1)
+>
+> _skipped = [k for k in _OPTIONAL if not os.environ.get(k)]
+> if _skipped:
+>     print(f"NOTE: Optional keys not set: {', '.join(_skipped)}. Related providers will return errors when called.", file=sys.stderr)
+>
+> ADMIN_USER = os.environ["APP_USER"]
+> ADMIN_PASS = os.environ["APP_PASS"]
+> FLASK_SECRET = os.environ["FLASK_SECRET"]
+> MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY", "")
+> GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+> LANGCHAIN_API_KEY = os.environ.get("LANGCHAIN_API_KEY", "")
+> LANGCHAIN_PROJECT = os.environ.get("LANGCHAIN_PROJECT", "llminsight")
+> ```
 
 ### Environment Variables
 
@@ -192,6 +235,8 @@ FLASK_SECRET=changeme
 ```
 
 The app runs with just these three variables. Missing optional keys are noted at startup; models routed to a provider without a key return error responses, but the app itself continues to work normally.
+
+> **Important:** The default Layer 2 (prompt improver) model is `open-mistral-nemo-2407`, which requires `MISTRAL_API_KEY`. If you are running Ollama-only without a Mistral key, either disable the **Change Prompt** toggle in the UI or change `DEFAULT_LAYER2_MODEL` in `config.py` to an Ollama model (e.g., `gemma2:9b`).
 
 ### Pull Ollama Models
 
@@ -262,7 +307,7 @@ pip install -r requirements-dev.txt
 pytest tests/ -v --tb=short
 ```
 
-102 contract tests validate backup schema, restore behavior, advanced model map compatibility, auth matrix, and provider routing. Tests use monkeypatched temp directories and an isolated SQLite database — no production files are touched, no AI models are called, and no `.env` file is required.
+The contract tests validate backup schema, restore behavior, advanced model map compatibility, auth matrix, and provider routing. Tests use monkeypatched temp directories and an isolated SQLite database — no production files are touched, no AI models are called, and no `.env` file is required.
 
 ---
 
@@ -324,6 +369,12 @@ LangSmith/LangChain tracing is available on all AI layers via `@traceable` decor
 - [Implementation](./docs/IMPLEMENTATION.md) — route contracts, JSON schemas, layer behavior
 - [Refactoring Notes](./docs/REFACTORING.md) — maintenance guidance and implementation notes
 - [User Guide](./docs/user%20guide.md) — end-user walkthrough
+
+---
+
+## Contributing
+
+Contributions are welcome. If you'd like to help improve LLM InSights, please open an issue to discuss your idea before submitting a pull request. Bug reports, feature suggestions, and documentation improvements are all appreciated.
 
 ---
 
