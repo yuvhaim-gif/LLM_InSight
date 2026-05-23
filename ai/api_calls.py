@@ -103,7 +103,7 @@ def call_ollama(model: str, messages: List[dict], timeout: int = 300) -> Dict:
         logging.error(f"[OLLAMA_TIMEOUT] Model '{model}' did not respond within {timeout}s - thread still running")
         try:
             print(f"⚠️ [TIMEOUT] Model '{model}' exceeded {timeout}s timeout.")
-        except:
+        except Exception:
             pass
         return _make_response(f"[OLLAMA_TIMEOUT]: Model '{model}' did not respond within {timeout} seconds.", tool="ollama")
     

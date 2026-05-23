@@ -10,7 +10,6 @@ build/
 
 # Secrets — NEVER commit
 PI.py
-secrets_config.py
 .env
 .env.*
 !.env.example

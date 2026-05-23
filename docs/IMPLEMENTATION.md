@@ -80,9 +80,9 @@ Route contracts, runtime behavior, JSON schemas, configuration, and frontend int
 | `POST /save_current_selection` | Mark session as modified (flush pending state) |
 | `GET /get_backup_data` | Export full session as JSON (version 2.0) |
 | `GET /review_chats` | Render review page |
-| `GET /get_chat_stats` | Get stats for all backup files in `~/Downloads` |
+| `GET /get_chat_stats` | Get stats for all backup files in `backup/` |
 | `POST /load_chat_from_review` | Restore a backup into the active session |
-| `POST /delete_chat_file` | Delete a backup file from `~/Downloads` |
+| `POST /delete_chat_file` | Delete a backup file from `backup/` |
 | `POST /upload_chat_json` | Upload and restore a JSON backup |
 
 ## Auth Behavior
@@ -461,7 +461,7 @@ CSS load order: `shared.css` (via `_head_common.html`) → page-specific CSS. Th
 
 ### Review Page (`review.html` + `review.js`)
 
-- Lists backups from `~/Downloads` (`GET /get_chat_stats`), newest first.
+- Lists backups from `backup/` (`GET /get_chat_stats`), newest first.
 - Per-chat display: prompt count, first prompt text, file date.
 - Per-prompt drill-down: score summary, iteration cards with Layer 1A vs 1B scores, models, runtimes, winners.
 - Score grids and iteration cards dynamically render whatever grading keys are in the data.

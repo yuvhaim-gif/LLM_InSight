@@ -66,15 +66,13 @@ def exit_backup():
         clear_file(ITERATION_HISTORY_FILE)
         cleanup_old_sessions(max_age_hours=0)
         print("Exit backup completed")
-    except Exception:
-        pass
-
-from routes import register_routes
-register_routes(app)
-
-atexit.register(exit_backup)
+    except Exception as e:
+        print(f"EXIT BACKUP ERROR: {e}")
 
 if __name__ == '__main__':
+    from routes import register_routes
+    register_routes(app)
+    atexit.register(exit_backup)
     startup_cleanup()
     
     if not os.path.exists(BACKUP_DIR):

@@ -145,7 +145,7 @@ Create and manage grader settings — named configurations that define grading c
 
 The review page serves as both a log of past runs and a deeper analysis tool.
 
-- Lists saved backups from `~/Downloads`, newest first.
+- Lists saved backups from `backup/`, newest first.
 - Select a chat to see prompt summary (scores, categories, models, iterations).
 - Score grids and iteration cards dynamically display whatever grading keys were used during the run — they are not limited to the default five categories.
 - Drill into any prompt for charts and iteration cards showing Layer 1A vs Layer 1B comparisons.
@@ -222,7 +222,7 @@ Multi-prompt sessions carry the best answer from the previous prompt forward as 
 
 ### Review Page as Log and Analysis Tool
 
-- Browse all saved backups from `~/Downloads`, sorted by date.
+- Browse all saved backups from `backup/`, sorted by date.
 - Per-prompt iteration stats with scores, models, runtimes, and token usage.
 - All Prompts Summary table shows best scores, per-category scores (uses the default five category columns: accuracy, clarity, creativity, structure, conciseness), model, and iteration count at a glance.
 - Dynamic score grids in iteration cards render whatever grading keys were used (not limited to defaults).

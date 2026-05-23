@@ -10,12 +10,13 @@ PORT = int(os.environ.get("PORT", 5000))
 SSL_CERT_PATH = os.environ.get("SSL_CERT_PATH", "")
 SSL_KEY_PATH = os.environ.get("SSL_KEY_PATH", "")
 
-os.environ["LANGCHAIN_TRACING_V2"] = "true"
-os.environ["LANGCHAIN_API_KEY"] = LANGCHAIN_API_KEY
-os.environ["LANGCHAIN_PROJECT"] = LANGCHAIN_PROJECT
-os.environ["LANGSMITH_TRACING"] = "true"
-os.environ["LANGSMITH_API_KEY"] = LANGCHAIN_API_KEY
-os.environ["LANGSMITH_PROJECT"] = LANGCHAIN_PROJECT
+if LANGCHAIN_API_KEY:
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_API_KEY"] = LANGCHAIN_API_KEY
+    os.environ["LANGCHAIN_PROJECT"] = LANGCHAIN_PROJECT
+    os.environ["LANGSMITH_TRACING"] = "true"
+    os.environ["LANGSMITH_API_KEY"] = LANGCHAIN_API_KEY
+    os.environ["LANGSMITH_PROJECT"] = LANGCHAIN_PROJECT
 
 DEFAULT_LAYER1A_MODEL = "gemma:7b-instruct-q4_K_M"
 DEFAULT_LAYER1B_MODEL = "granite4:latest"
@@ -52,7 +53,7 @@ BESTBEST_CACHE = os.path.join(BASE_DIR, "best_best_layer1.json")
 BACKUP_DIR = os.path.join(BASE_DIR, "backup")
 ITERATION_HISTORY_FILE = os.path.join(BASE_DIR, "iteration_history.json")
 CONSOLE_OUTPUT_FILE = os.path.join(BASE_DIR, "console_output.txt")
-DOWNLOADS_DIR = os.path.join(os.path.expanduser("~"), "Downloads")
+DOWNLOADS_DIR = os.path.join(BASE_DIR, "backup")
 STATE_DB_PATH = os.path.join(BASE_DIR, "runtime_state.db")
 
 _CORE_MODELS = [

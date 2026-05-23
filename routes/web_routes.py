@@ -1,5 +1,6 @@
 import sys
 import io
+import contextlib
 from flask import request, session, redirect, url_for, render_template
 from routes import main_bp
 from routes.api_routes import check_auth
@@ -90,17 +91,16 @@ def index():
             
             prompt_history = session.get('prompt_history', [])
             
-            original_stdout = sys.stdout
             captured_output = io.StringIO()
-            sys.stdout = captured_output
             
             try:
-                best_entry, updated_history = iterative_loop(
-                    prompt,
-                    min_grade=min_grade,
-                    max_iterations=max_iterations,
-                    prompt_history=prompt_history.copy()
-                )
+                with contextlib.redirect_stdout(captured_output):
+                    best_entry, updated_history = iterative_loop(
+                        prompt,
+                        min_grade=min_grade,
+                        max_iterations=max_iterations,
+                        prompt_history=prompt_history.copy()
+                    )
                 
                 session['prompt_history'] = updated_history
                 session.modified = True
@@ -123,7 +123,6 @@ def index():
                 console_output += f"\n\nERROR: {str(e)}"
                 save_console_output(console_output)
             finally:
-                sys.stdout = original_stdout
                 state.set_is_processing(False)
                 state._fallback_session_id = None
     
