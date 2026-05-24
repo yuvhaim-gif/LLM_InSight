@@ -66,7 +66,7 @@ def compute_score(grade: dict, weights: Optional[dict] = None) -> int:
         for key in weights:
             try:
                 parsed = float(weights[key])
-                active_weights[key] = parsed if parsed >= 0 else 0
+                active_weights[key] = parsed
             except (ValueError, TypeError):
                 active_weights[key] = 0
         if not active_weights or sum(active_weights.values()) <= 0:

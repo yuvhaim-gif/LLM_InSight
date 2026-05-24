@@ -28,7 +28,7 @@ function renderDeeperAnalysisWeightControls(weights) {
     if (wkeys.length === 0) wkeys = DEEPER_ANALYSIS_GRADE_KEYS;
     const entries = wkeys.map(key => {
         const value = weights[key] || 0;
-        return `<div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.95); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 8px; padding: 6px 8px;"><span style="font-size: 0.78rem; font-weight: 600; color: #2d3436; text-transform: capitalize;">${key}</span><input type="number" data-deeper-weight-input="${key}" value="${value.toFixed(2)}" min="0" max="1" step="0.01" style="width: 66px; padding: 3px 6px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 0.78rem;"><span data-deeper-weight-percent="${key}" style="font-size: 0.75rem; color: #636e72;">${(value * 100).toFixed(0)}%</span></div>`;
+        return `<div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.95); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 8px; padding: 6px 8px;"><span style="font-size: 0.78rem; font-weight: 600; color: #2d3436; text-transform: capitalize;">${key}</span><input type="number" data-deeper-weight-input="${key}" value="${value.toFixed(2)}" min="-1" max="1" step="0.01" style="width: 66px; padding: 3px 6px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 0.78rem;"><span data-deeper-weight-percent="${key}" style="font-size: 0.75rem; color: #636e72;">${(value * 100).toFixed(0)}%</span></div>`;
     }).join('');
 
     const total = wkeys.reduce((sum, key) => sum + (weights[key] || 0), 0);
@@ -80,7 +80,7 @@ function updateDeeperAnalysisWeightIndicator() {
     inputs.forEach(input => {
         const key = input.getAttribute('data-deeper-weight-input');
         const value = parseFloat(input.value);
-        const safeValue = !isNaN(value) && value >= 0 ? value : 0;
+        const safeValue = !isNaN(value) ? value : 0;
         total += safeValue;
         if (key) {
             currentWeights[key] = safeValue;
@@ -140,7 +140,7 @@ function normalizeDeeperAnalysisWeights(weights) {
 
     keys.forEach(key => {
         const value = parseFloat(weights[key]);
-        const safeValue = !isNaN(value) && value >= 0 ? value : 0;
+        const safeValue = !isNaN(value) ? value : 0;
         normalized[key] = safeValue;
         total += safeValue;
     });

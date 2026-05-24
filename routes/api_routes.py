@@ -279,7 +279,7 @@ def update_weights():
         if expected_keys != provided_keys:
             return jsonify({'error': 'Missing or extra categories'}), 400
         for category, weight in weights.items():
-            if not isinstance(weight, (int, float)) or weight < 0 or weight > 1:
+            if not isinstance(weight, (int, float)) or weight < -1 or weight > 1:
                 return jsonify({'error': f'Invalid weight for {category}'}), 400
         total = sum(weights.values())
         if total > 0:

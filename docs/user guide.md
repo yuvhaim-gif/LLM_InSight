@@ -120,7 +120,7 @@ Create and manage grader settings — named configurations that define grading c
   - **Key name** — automatically lowercased with spaces converted to underscores. Duplicate names are detected and prevented on save.
   - **Rubric** — free-text description of what the key measures and how it should be scored.
   - **Grader model** — one of the available grader models: `phi3:mini`, `gemma2:2b`, `qwen2.5:1.5b`, `llama3.2:3b`.
-  - **Weight %** — entered as a percentage (e.g. 25 for 25%), converted to a 0-1 decimal on save and back to percentage on load.
+  - **Weight %** — entered as a percentage (e.g. 25 for 25%), converted to a decimal on save and back to percentage on load. Negative weights are allowed (e.g. -20 for -20%); positive weights must compensate so the total remains 100%.
 - **Remove** — removes a grading key row from the configuration.
 - **Weight total indicator** — live pill next to "Add Grading Key" shows the sum of all weights. Turns green at 100%, red otherwise.
 

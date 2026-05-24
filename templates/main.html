@@ -49,7 +49,7 @@
                        data-category="{{category}}" 
                        data-weight-input="{{category}}"
                        value="{{(weight * 100)|round|int}}" 
-                       min="0" max="100" step="1"
+                       min="-100" max="100" step="1"
                        onchange="checkManualWeightChanges()"
                        oninput="updateWeightSumIndicator()"
                        onkeypress="return event.key !== 'Enter'">

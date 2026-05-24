@@ -41,7 +41,7 @@ function addKeyRowWithData(keyName, rubric, grader, weight) {
         '<td><input type="text" class="key-name-input" value="' + escapeHtml(keyName) + '" placeholder="key name"></td>' +
         '<td><textarea class="key-rubric-input" placeholder="Rubric description...">' + escapeHtml(rubric) + '</textarea></td>' +
         '<td><select class="key-grader-select">' + modelOptions + '</select></td>' +
-        '<td><input type="number" class="key-weight-input" value="' + pct + '" min="0" max="100" step="1" placeholder="20" oninput="updateWeightTotal()">%</td>' +
+        '<td><input type="number" class="key-weight-input" value="' + pct + '" min="-100" max="100" step="1" placeholder="20" oninput="updateWeightTotal()">%</td>' +
         '<td><button class="btn-remove-key" onclick="removeKeyRow(this)">Remove</button></td>';
 
     tbody.appendChild(tr);
@@ -62,7 +62,7 @@ function updateWeightTotal() {
     var total = 0;
     inputs.forEach(function(input) {
         var v = parseFloat(input.value);
-        if (!isNaN(v) && v >= 0) total += v;
+        if (!isNaN(v)) total += v;
     });
     var indicator = document.getElementById('weightTotalIndicator');
     if (indicator) {
@@ -141,7 +141,7 @@ function collectEntries() {
         const rubric = (rubricInput.value || '').trim();
         const grader = graderSelect.value;
         var weightPct = parseFloat(weightInput ? weightInput.value : 0);
-        if (isNaN(weightPct) || weightPct < 0) weightPct = 0;
+        if (isNaN(weightPct)) weightPct = 0;
 
         if (!key || !rubric || !grader) {
             valid = false;
@@ -183,7 +183,7 @@ function saveSetting() {
     var totalPct = 0;
     weightInputs.forEach(function(input) {
         var v = parseFloat(input.value);
-        if (!isNaN(v) && v >= 0) totalPct += v;
+        if (!isNaN(v)) totalPct += v;
     });
     if (Math.abs(totalPct - 100) > 0.5) {
         showStatus('Weight total must equal 100% (currently ' + Math.round(totalPct) + '%)', 'error');

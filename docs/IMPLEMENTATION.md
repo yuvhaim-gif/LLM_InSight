@@ -239,7 +239,7 @@ One file per named setting. Each file has one JSON object per line: `{ key, rubr
 
 - `min_grade`: clamped to 0-100, default 100.
 - `max_iterations`: 1-5, default 5.
-- Weight updates require all active grader setting category keys, each value in [0, 1]; auto-normalized to sum 1.
+- Weight updates require all active grader setting category keys, each value in [-1, 1]; auto-normalized to sum 1. Negative weights are allowed (positive weights must compensate so the total remains 100%).
 - Model updates validated against allow-lists in `config.py`.
 - Grader setting saves require: name not `default`, max 8 entries, each entry has key/rubric/grader, grader in `AVAILABLE_GRADER_MODELS`.
 
@@ -454,7 +454,7 @@ CSS load order: `shared.css` (via `_head_common.html`) → page-specific CSS. Th
 - **Add Grading Key**: adds a row (max 8 enforced on frontend and backend).
 - **Remove**: deletes a category row.
 - **Weight total indicator**: live pill showing sum (green at 100%, red otherwise). Save blocked unless total = 100% and all fields filled.
-- **Weights**: entered as percentages (0-100), converted to 0-1 decimals on save, converted back on load.
+- **Weights**: entered as percentages (-100 to 100), converted to decimals on save, converted back on load. Negative weights are allowed; the total must still equal 100%.
 - **Save Setting**: persists configuration. Blocked for `default` name. Overwrite confirmation dialog for existing settings. New settings appear in dropdown immediately.
 - **Read-only notice**: appears when viewing the `default` setting.
 - **Back to Main**: navigates to `/`.

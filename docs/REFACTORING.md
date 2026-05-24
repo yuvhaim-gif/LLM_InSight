@@ -48,7 +48,7 @@ Guidance for maintaining and evolving the tool without breaking existing behavio
 - Layer 3 rubrics and grader models are loaded from the active grader setting at grade time, not cached at session start. If the named setting file is missing on disk (e.g., after restoring a backup from another machine), `get_layer3_grader_models()` falls back to session-stored graders. If the file exists, it remains the source of truth.
 - Weight priority chain: user-applied custom weights -> active grader config defaults -> hardcoded `CATEGORY_WEIGHTS`.
 - Config Graders: key names and setting names are normalized (lowercase, underscores). Duplicate key detection prevents saves with repeated key names.
-- Weights entered as percentages on Config Graders page, converted to 0-1 decimals on save, converted back on load.
+- Weights entered as percentages (-100 to 100) on Config Graders page, converted to decimals on save, converted back on load. Negative weights are allowed; the total must still equal 100%.
 - `@traceable` decorator is resolved at import time in `utils/common.py`. If `langsmith` is not installed, a no-op decorator is used instead, so tracing is non-blocking.
 - When advanced per-iteration models are saved, main sidebar selectors are locked (disabled) and show "Advanced (Per-Iteration)". Changing a main selector clears all advanced maps via `POST /clear_advanced_models`.
 - Upload button on main page is disabled when console output is non-empty, preventing accidental overwrite of an active session.
