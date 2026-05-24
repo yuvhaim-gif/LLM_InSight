@@ -23,6 +23,10 @@ from utils.session import (
 )
 from utils.grader_settings import list_grader_settings, get_grader_config
 from utils.text_processing import extract_all_best_best_from_console, extract_prompts_from_console
+from utils.session_keys import (
+    SK_PROMPT_HISTORY, SK_ITERATION_HISTORY, SK_MIN_GRADE,
+    SK_MAX_ITERATIONS, SK_CUSTOM_WEIGHTS, SK_USER
+)
 from ai.iterative_loop import iterative_loop
 import state
 
@@ -31,16 +35,16 @@ def index():
     if not check_auth():
         return redirect(url_for('api.login'))
     
-    if 'prompt_history' not in session:
-        session['prompt_history'] = []
+    if SK_PROMPT_HISTORY not in session:
+        session[SK_PROMPT_HISTORY] = []
     
-    prompt_history = session.get('prompt_history', [])
+    prompt_history = session.get(SK_PROMPT_HISTORY, [])
     default_prompt = prompt_history[-1] if prompt_history else ''
     console_output = load_console_output()
     
     if request.method == 'GET':
-        if 'iteration_history' in session and session.get('iteration_history'):
-            iteration_history = session['iteration_history']
+        if SK_ITERATION_HISTORY in session and session.get(SK_ITERATION_HISTORY):
+            iteration_history = session[SK_ITERATION_HISTORY]
             print(f"[DEBUG] iteration_history from SESSION, prompts keys: {list(iteration_history.get('prompts', {}).keys()) if isinstance(iteration_history, dict) else 'not dict'}")
         else:
             iteration_history = get_iteration_history()
@@ -62,7 +66,7 @@ def index():
     
     if request.method == 'POST':
         prompt = request.form.get('prompt', '').strip()
-        prompt_history_at_submit = session.get('prompt_history', [])
+        prompt_history_at_submit = session.get(SK_PROMPT_HISTORY, [])
         print(f"[DEBUG POST] Submitting new prompt. Current prompt_history in session: {len(prompt_history_at_submit)} items: {prompt_history_at_submit}")
         min_grade_raw = request.form.get('min_grade', '100')
         max_iterations_raw = request.form.get('max_iterations', '5')
@@ -79,8 +83,8 @@ def index():
         except ValueError:
             max_iterations = 5
         
-        session['min_grade'] = min_grade
-        session['max_iterations'] = max_iterations
+        session[SK_MIN_GRADE] = min_grade
+        session[SK_MAX_ITERATIONS] = max_iterations
         session.modified = True
         
         if prompt:
@@ -89,7 +93,7 @@ def index():
             state.set_models_executed(0)
             state.set_current_iteration_value(1)
             
-            prompt_history = session.get('prompt_history', [])
+            prompt_history = session.get(SK_PROMPT_HISTORY, [])
             
             captured_output = io.StringIO()
             
@@ -102,7 +106,7 @@ def index():
                         prompt_history=prompt_history.copy()
                     )
                 
-                session['prompt_history'] = updated_history
+                session[SK_PROMPT_HISTORY] = updated_history
                 session.modified = True
                 
                 console_output = captured_output.getvalue()
@@ -138,7 +142,7 @@ def index():
     grader_config = get_grader_config(grader_setting_name)
     available_grader_settings = list_grader_settings()
 
-    current_weights = session.get('custom_weights')
+    current_weights = session.get(SK_CUSTOM_WEIGHTS)
     if not current_weights or not isinstance(current_weights, dict):
         current_weights = grader_config.get('weights', CATEGORY_WEIGHTS.copy())
     else:
@@ -153,9 +157,9 @@ def index():
     
     return render_template(
         'main.html',
-        user=session.get('user', 'Guest'),
-        min_grade=session.get('min_grade', 100),
-        max_iterations=session.get('max_iterations', 5),
+        user=session.get(SK_USER, 'Guest'),
+        min_grade=session.get(SK_MIN_GRADE, 100),
+        max_iterations=session.get(SK_MAX_ITERATIONS, 5),
         prompt=default_prompt,
         all_prompt_results=all_prompt_results,
         original_prompts=original_prompts,
@@ -172,7 +176,7 @@ def index():
         layer3_graders=grader_config.get('grader_models', layer3_graders),
         iteration_history=iteration_history,
         current_weights=current_weights,
-        is_using_custom_weights=session.get('custom_weights') is not None,
+        is_using_custom_weights=session.get(SK_CUSTOM_WEIGHTS) is not None,
         category_weights=CATEGORY_WEIGHTS,
         advanced_layer1a_models=get_advanced_layer1a_models(),
         advanced_layer1b_models=get_advanced_layer1b_models(),
@@ -182,7 +186,7 @@ def index():
         give_ideas_enabled=get_give_ideas_enabled(),
         layer1_last_best_context_enabled=get_layer1_last_best_context_enabled(),
         grade_vs_prompt_mode=get_grade_vs_prompt_mode(),
-        prompt_count=len(session.get('prompt_history', [])),
+        prompt_count=len(session.get(SK_PROMPT_HISTORY, [])),
         grader_setting_name=grader_setting_name,
         available_grader_settings=available_grader_settings
     )
@@ -199,7 +203,7 @@ def config_graders():
     
     return render_template(
         'config_graders.html',
-        user=session.get('user', 'Guest'),
+        user=session.get(SK_USER, 'Guest'),
         grader_setting_name=grader_setting_name,
         available_grader_settings=available_settings,
         available_grader_models=AVAILABLE_GRADER_MODELS,

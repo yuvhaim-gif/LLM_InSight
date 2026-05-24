@@ -30,6 +30,16 @@ from utils.grader_settings import (
 )
 from utils.text_processing import extract_prompts_from_console
 from utils.common import utc_now_iso
+from utils.session_keys import (
+    SK_LOGGED_IN, SK_USER, SK_PROMPT_HISTORY, SK_ALL_PROMPT_RESULTS,
+    SK_DEGRADATION_BREAK_ENABLED, SK_CHANGE_PROMPT_BETWEEN_LAYERS1,
+    SK_GIVE_IDEAS_ENABLED, SK_LAYER1_LAST_BEST_CONTEXT_ENABLED,
+    SK_GRADE_VS_PROMPT_MODE, SK_GRADER_SETTING_NAME, SK_MIN_GRADE,
+    SK_MAX_ITERATIONS, SK_LAYER1A_MODEL, SK_LAYER1B_MODEL,
+    SK_LAYER0_MODEL, SK_LAYER2_MODEL, SK_CUSTOM_WEIGHTS,
+    SK_ADVANCED_LAYER1A_MODELS, SK_ADVANCED_LAYER1B_MODELS,
+    SK_ADVANCED_LAYER2_MODELS
+)
 
 import state
 
@@ -41,7 +51,7 @@ else:
     LOGIN_TEMPLATE = '<html><body><form method="POST"><input name="username"><input name="password" type="password"><button>Login</button></form></body></html>'
 
 def check_auth():
-    return session.get('logged_in', False)
+    return session.get(SK_LOGGED_IN, False)
 
 @api_bp.route('/iteration', methods=['GET'])
 def get_iteration():
@@ -69,25 +79,25 @@ def login():
             clear_file(CONSOLE_OUTPUT_FILE)
             clear_file(LEDGER_FILE)
             clear_file(BESTBEST_CACHE)
-            session['logged_in'] = True
-            session['user'] = u
-            session['prompt_history'] = []
-            session['degradation_break_enabled'] = True
-            session['change_prompt_between_layers1'] = True
-            session['give_ideas_enabled'] = True
-            session['layer1_last_best_context_enabled'] = True
-            session['grade_vs_prompt_mode'] = 'current'
-            session['grader_setting_name'] = 'default'
-            session['min_grade'] = 100
-            session['max_iterations'] = 5
-            session.pop('layer1a_model', None)
-            session.pop('layer1b_model', None)
-            session.pop('layer0_model', None)
-            session.pop('layer2_model', None)
-            session.pop('custom_weights', None)
-            set_large_session_data('advanced_layer1a_models', {})
-            set_large_session_data('advanced_layer1b_models', {})
-            set_large_session_data('advanced_layer2_models', {})
+            session[SK_LOGGED_IN] = True
+            session[SK_USER] = u
+            session[SK_PROMPT_HISTORY] = []
+            session[SK_DEGRADATION_BREAK_ENABLED] = True
+            session[SK_CHANGE_PROMPT_BETWEEN_LAYERS1] = True
+            session[SK_GIVE_IDEAS_ENABLED] = True
+            session[SK_LAYER1_LAST_BEST_CONTEXT_ENABLED] = True
+            session[SK_GRADE_VS_PROMPT_MODE] = 'current'
+            session[SK_GRADER_SETTING_NAME] = 'default'
+            session[SK_MIN_GRADE] = 100
+            session[SK_MAX_ITERATIONS] = 5
+            session.pop(SK_LAYER1A_MODEL, None)
+            session.pop(SK_LAYER1B_MODEL, None)
+            session.pop(SK_LAYER0_MODEL, None)
+            session.pop(SK_LAYER2_MODEL, None)
+            session.pop(SK_CUSTOM_WEIGHTS, None)
+            set_large_session_data(SK_ADVANCED_LAYER1A_MODELS, {})
+            set_large_session_data(SK_ADVANCED_LAYER1B_MODELS, {})
+            set_large_session_data(SK_ADVANCED_LAYER2_MODELS, {})
             state.reset_session_state()
             return redirect(url_for('main.index'))
         return render_template_string(LOGIN_TEMPLATE + '<div class="error-message">Invalid credentials</div>')
@@ -132,21 +142,21 @@ def clear_chat():
     
     state.reset_session_state()
     session.clear()
-    session['logged_in'] = True
-    session['user'] = ADMIN_USER
-    session['prompt_history'] = []
-    session['all_prompt_results'] = []
-    session['degradation_break_enabled'] = True
-    session['change_prompt_between_layers1'] = True
-    session['give_ideas_enabled'] = True
-    session['layer1_last_best_context_enabled'] = True
-    session['grade_vs_prompt_mode'] = 'current'
-    session['grader_setting_name'] = 'default'
-    session['min_grade'] = 100
-    session['max_iterations'] = 5
-    set_large_session_data('advanced_layer1a_models', {})
-    set_large_session_data('advanced_layer1b_models', {})
-    set_large_session_data('advanced_layer2_models', {})
+    session[SK_LOGGED_IN] = True
+    session[SK_USER] = ADMIN_USER
+    session[SK_PROMPT_HISTORY] = []
+    session[SK_ALL_PROMPT_RESULTS] = []
+    session[SK_DEGRADATION_BREAK_ENABLED] = True
+    session[SK_CHANGE_PROMPT_BETWEEN_LAYERS1] = True
+    session[SK_GIVE_IDEAS_ENABLED] = True
+    session[SK_LAYER1_LAST_BEST_CONTEXT_ENABLED] = True
+    session[SK_GRADE_VS_PROMPT_MODE] = 'current'
+    session[SK_GRADER_SETTING_NAME] = 'default'
+    session[SK_MIN_GRADE] = 100
+    session[SK_MAX_ITERATIONS] = 5
+    set_large_session_data(SK_ADVANCED_LAYER1A_MODELS, {})
+    set_large_session_data(SK_ADVANCED_LAYER1B_MODELS, {})
+    set_large_session_data(SK_ADVANCED_LAYER2_MODELS, {})
     
     import gc
     gc.collect()
@@ -175,7 +185,7 @@ def update_layer1a_model():
         model = data.get('model', '')
         if model not in AVAILABLE_LAYER1A_MODELS:
             return jsonify({'error': f'Invalid model'}), 400
-        session['layer1a_model'] = model
+        session[SK_LAYER1A_MODEL] = model
         session.modified = True
         return jsonify({'success': True, 'model': model})
     except Exception as e:
@@ -185,7 +195,7 @@ def update_layer1a_model():
 def reset_layer1a_model():
     if not check_auth():
         return jsonify({'error': 'Not authenticated'}), 401
-    session.pop('layer1a_model', None)
+    session.pop(SK_LAYER1A_MODEL, None)
     return jsonify({'success': True, 'model': DEFAULT_LAYER1A_MODEL})
 
 @api_bp.route('/update_layer1b_model', methods=['POST'])
@@ -197,7 +207,7 @@ def update_layer1b_model():
         model = data.get('model', '')
         if model not in AVAILABLE_LAYER1B_MODELS:
             return jsonify({'error': f'Invalid model'}), 400
-        session['layer1b_model'] = model
+        session[SK_LAYER1B_MODEL] = model
         session.modified = True
         return jsonify({'success': True, 'model': model})
     except Exception as e:
@@ -207,7 +217,7 @@ def update_layer1b_model():
 def reset_layer1b_model():
     if not check_auth():
         return jsonify({'error': 'Not authenticated'}), 401
-    session.pop('layer1b_model', None)
+    session.pop(SK_LAYER1B_MODEL, None)
     return jsonify({'success': True, 'model': DEFAULT_LAYER1B_MODEL})
 
 @api_bp.route('/update_layer0_model', methods=['POST'])
@@ -219,7 +229,7 @@ def update_layer0_model():
         model = data.get('model', '')
         if model not in AVAILABLE_LAYER0_MODELS:
             return jsonify({'error': f'Invalid model'}), 400
-        session['layer0_model'] = model
+        session[SK_LAYER0_MODEL] = model
         session.modified = True
         return jsonify({'success': True, 'model': model})
     except Exception as e:
@@ -229,7 +239,7 @@ def update_layer0_model():
 def reset_layer0_model():
     if not check_auth():
         return jsonify({'error': 'Not authenticated'}), 401
-    session.pop('layer0_model', None)
+    session.pop(SK_LAYER0_MODEL, None)
     return jsonify({'success': True, 'model': DEFAULT_LAYER0_MODEL})
 
 @api_bp.route('/update_layer2_model', methods=['POST'])
@@ -241,7 +251,7 @@ def update_layer2_model():
         model = data.get('model', DEFAULT_LAYER2_MODEL)
         if model not in AVAILABLE_LAYER2_MODELS:
             return jsonify({'error': f'Invalid model'}), 400
-        session['layer2_model'] = model
+        session[SK_LAYER2_MODEL] = model
         session.modified = True
         return jsonify({'success': True, 'model': model})
     except Exception as e:
@@ -251,7 +261,7 @@ def update_layer2_model():
 def reset_layer2_model():
     if not check_auth():
         return jsonify({'error': 'Not authenticated'}), 401
-    session.pop('layer2_model', None)
+    session.pop(SK_LAYER2_MODEL, None)
     return jsonify({'success': True, 'model': DEFAULT_LAYER2_MODEL})
 
 @api_bp.route('/update_weights', methods=['POST'])
@@ -276,7 +286,7 @@ def update_weights():
             normalized_weights = {k: v/total for k, v in weights.items()}
         else:
             normalized_weights = active_config.get('weights', CATEGORY_WEIGHTS.copy())
-        session['custom_weights'] = normalized_weights
+        session[SK_CUSTOM_WEIGHTS] = normalized_weights
         session.modified = True
         return jsonify({'success': True, 'weights': normalized_weights})
     except Exception as e:
@@ -286,7 +296,7 @@ def update_weights():
 def reset_weights():
     if not check_auth():
         return jsonify({'error': 'Not authenticated'}), 401
-    session.pop('custom_weights', None)
+    session.pop(SK_CUSTOM_WEIGHTS, None)
     active_config = get_grader_config(get_grader_setting_name())
     return jsonify({'success': True, 'weights': active_config.get('weights', CATEGORY_WEIGHTS)})
 
@@ -329,9 +339,9 @@ def save_advanced_models():
         layer1a_models = data.get('layer1a_models', data.get('layer1a', {}))
         layer1b_models = data.get('layer1b_models', data.get('layer1b', {}))
         layer2_models = data.get('layer2_models', data.get('layer2', {}))
-        set_large_session_data('advanced_layer1a_models', layer1a_models)
-        set_large_session_data('advanced_layer1b_models', layer1b_models)
-        set_large_session_data('advanced_layer2_models', layer2_models)
+        set_large_session_data(SK_ADVANCED_LAYER1A_MODELS, layer1a_models)
+        set_large_session_data(SK_ADVANCED_LAYER1B_MODELS, layer1b_models)
+        set_large_session_data(SK_ADVANCED_LAYER2_MODELS, layer2_models)
         session.modified = True
         return jsonify({'success': True})
     except Exception as e:
@@ -341,9 +351,9 @@ def save_advanced_models():
 def clear_advanced_models():
     if not check_auth():
         return jsonify({'error': 'Not authenticated'}), 401
-    set_large_session_data('advanced_layer1a_models', {})
-    set_large_session_data('advanced_layer1b_models', {})
-    set_large_session_data('advanced_layer2_models', {})
+    set_large_session_data(SK_ADVANCED_LAYER1A_MODELS, {})
+    set_large_session_data(SK_ADVANCED_LAYER1B_MODELS, {})
+    set_large_session_data(SK_ADVANCED_LAYER2_MODELS, {})
     session.modified = True
     return jsonify({'success': True})
 
@@ -354,9 +364,9 @@ def set_degradation_break():
     try:
         data = request.get_json()
         enabled = data.get('enabled', True)
-        session['degradation_break_enabled'] = bool(enabled)
+        session[SK_DEGRADATION_BREAK_ENABLED] = bool(enabled)
         session.modified = True
-        return jsonify({'success': True, 'enabled': session['degradation_break_enabled']})
+        return jsonify({'success': True, 'enabled': session[SK_DEGRADATION_BREAK_ENABLED]})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -367,9 +377,9 @@ def set_change_prompt_between_layers1():
     try:
         data = request.get_json()
         enabled = data.get('enabled', True)
-        session['change_prompt_between_layers1'] = bool(enabled)
+        session[SK_CHANGE_PROMPT_BETWEEN_LAYERS1] = bool(enabled)
         session.modified = True
-        return jsonify({'success': True, 'enabled': session['change_prompt_between_layers1']})
+        return jsonify({'success': True, 'enabled': session[SK_CHANGE_PROMPT_BETWEEN_LAYERS1]})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -380,9 +390,9 @@ def set_give_ideas():
     try:
         data = request.get_json()
         enabled = data.get('enabled', True)
-        session['give_ideas_enabled'] = bool(enabled)
+        session[SK_GIVE_IDEAS_ENABLED] = bool(enabled)
         session.modified = True
-        return jsonify({'success': True, 'enabled': session['give_ideas_enabled']})
+        return jsonify({'success': True, 'enabled': session[SK_GIVE_IDEAS_ENABLED]})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -393,9 +403,9 @@ def set_layer1_last_best_context():
     try:
         data = request.get_json()
         enabled = data.get('enabled', True)
-        session['layer1_last_best_context_enabled'] = bool(enabled)
+        session[SK_LAYER1_LAST_BEST_CONTEXT_ENABLED] = bool(enabled)
         session.modified = True
-        return jsonify({'success': True, 'enabled': session['layer1_last_best_context_enabled']})
+        return jsonify({'success': True, 'enabled': session[SK_LAYER1_LAST_BEST_CONTEXT_ENABLED]})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -408,7 +418,7 @@ def set_grade_vs_prompt_mode():
         mode = str(data.get('mode', 'current')).strip().lower()
         if mode not in ('first', 'current'):
             return jsonify({'error': 'Invalid mode'}), 400
-        session['grade_vs_prompt_mode'] = mode
+        session[SK_GRADE_VS_PROMPT_MODE] = mode
         session.modified = True
         return jsonify({'success': True, 'mode': mode})
     except Exception as e:
@@ -440,7 +450,7 @@ def get_backup_data():
             except Exception as e:
                 logging.error(f"Error reading ledger: {e}")
         
-        prompt_hist = session.get('prompt_history', [])
+        prompt_hist = session.get(SK_PROMPT_HISTORY, [])
         console_output = load_console_output()
         
         if not prompt_hist and console_output:
@@ -452,7 +462,7 @@ def get_backup_data():
         backup_data = {
             'console_output': console_output,
             'prompt_history': prompt_hist,
-            'all_prompt_results': session.get('all_prompt_results', []),
+            'all_prompt_results': session.get(SK_ALL_PROMPT_RESULTS, []),
             'iteration_history': load_json(ITERATION_HISTORY_FILE) or {},
             'best_best_cache': load_json(BESTBEST_CACHE) or {},
             'ledger_entries': ledger_entries,
@@ -472,8 +482,8 @@ def get_backup_data():
                 'layer1_last_best_context_enabled': get_layer1_last_best_context_enabled(),
                 'grade_vs_prompt_mode': get_grade_vs_prompt_mode(),
                 'grader_setting_name': get_grader_setting_name(),
-                'min_grade': session.get('min_grade', 100),
-                'max_iterations': session.get('max_iterations', 5)
+                'min_grade': session.get(SK_MIN_GRADE, 100),
+                'max_iterations': session.get(SK_MAX_ITERATIONS, 5)
             },
             'timestamp': utc_now_iso(),
             'version': '2.0'
@@ -550,7 +560,7 @@ def set_grader_setting_route():
         if not grader_setting_exists(name):
             name = 'default'
         set_grader_setting_name(name)
-        session.pop('custom_weights', None)
+        session.pop(SK_CUSTOM_WEIGHTS, None)
         session.modified = True
         config = get_grader_config(name)
         return jsonify({'success': True, 'name': name, 'config': config})

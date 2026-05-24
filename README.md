@@ -305,9 +305,9 @@ LangSmith/LangChain tracing is available on all AI layers via `@traceable` decor
 | `secrets_config.py` | Credentials loaded from `.env` |
 | `graderdata/` | JSONL grader setting files |
 | `routes/` | `web_routes.py`, `api_routes.py`, `review_routes.py` |
-| `ai/` | `iterative_loop.py`, `layer0.py`, `layer1.py`, `layer2.py`, `layer3.py`, `api_calls.py` |
+| `ai/` | `iterative_loop.py`, `iteration_summary.py`, `layer0.py`, `layer1.py`, `layer2.py`, `layer3.py`, `api_calls.py` |
 | `models.py` | Pydantic schemas (`Layer2Response`, `Layer2Critique`) |
-| `utils/` | `session.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py` |
+| `utils/` | `session.py`, `session_keys.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py` |
 | `state.py`, `db.py` | Hybrid state management (SQLite + in-memory) |
 | `templates/` | Jinja2 templates (login, main, review, config_graders) with shared partials |
 | `static/` | CSS, JavaScript, and assets |

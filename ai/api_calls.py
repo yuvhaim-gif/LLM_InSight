@@ -30,6 +30,30 @@ def _make_response(content: str, tool: str = "", input_tokens: int = 0, output_t
         }
     }
 
+def _handle_thread_result(result: dict, thread: threading.Thread, timeout: int,
+                          tool: str, error_prefix: str, timeout_prefix: str,
+                          service_label: str) -> Dict:
+    if result["error"]:
+        logging.error(f"[{service_label}_RESULT_ERROR] {result['error']}")
+        return _make_response(result["error"], tool=tool)
+
+    if result["content"] is not None:
+        state.increment_models_executed()
+        return _make_response(result["content"], tool=tool,
+                              input_tokens=result["input_tokens"],
+                              output_tokens=result["output_tokens"])
+
+    if result["completed"]:
+        logging.warning(f"[{service_label}_COMPLETED_NO_CONTENT] Thread completed but no content")
+        return _make_response(f"[{error_prefix}]: No content returned from {service_label}", tool=tool)
+
+    if thread.is_alive():
+        logging.error(f"[{service_label}_TIMEOUT] {service_label} did not respond within {timeout}s")
+        return _make_response(f"[{timeout_prefix}]: {service_label} did not respond within {timeout} seconds", tool=tool)
+
+    logging.error(f"[{service_label}_INCOMPLETE] Thread terminated abnormally")
+    return _make_response(f"[{error_prefix}]: Thread terminated without completing", tool=tool)
+
 def call_model(model: str, messages: List[dict], timeout: int = 300) -> Dict:
     if model in _GEMINI_MODELS:
         print(f"   🔗 ROUTING TO: Google Gemini API")
@@ -87,28 +111,14 @@ def call_ollama(model: str, messages: List[dict], timeout: int = 300) -> Dict:
     thread.start()
     thread.join(timeout=timeout)
     
-    if result["error"]:
-        logging.error(f"[OLLAMA_RESULT_ERROR] {result['error']}")
-        return _make_response(result["error"], tool="ollama")
-    
-    if result["content"] is not None:
-        state.increment_models_executed()
-        return _make_response(result["content"], tool="ollama", input_tokens=result["input_tokens"], output_tokens=result["output_tokens"])
-    
-    if result["completed"]:
-        logging.warning(f"[OLLAMA_COMPLETED_NO_CONTENT] Thread completed but no content: model '{model}'")
-        return _make_response("[OLLAMA_ERROR]: No content returned from model", tool="ollama")
-    
-    if thread.is_alive():
-        logging.error(f"[OLLAMA_TIMEOUT] Model '{model}' did not respond within {timeout}s - thread still running")
+    if not result["completed"] and not result["error"] and result["content"] is None and thread.is_alive():
         try:
             print(f"⚠️ [TIMEOUT] Model '{model}' exceeded {timeout}s timeout.")
         except Exception:
             pass
-        return _make_response(f"[OLLAMA_TIMEOUT]: Model '{model}' did not respond within {timeout} seconds.", tool="ollama")
-    
-    logging.error(f"[OLLAMA_INCOMPLETE] Thread terminated abnormally for model '{model}'")
-    return _make_response("[OLLAMA_ERROR]: Thread terminated without completing", tool="ollama")
+    return _handle_thread_result(result, thread, timeout, tool="ollama",
+                                 error_prefix="OLLAMA_ERROR", timeout_prefix="OLLAMA_TIMEOUT",
+                                 service_label="Ollama")
 
 def _post_with_retry(url: str, json_payload: dict, headers: dict, timeout: int, max_retries: int = 3, base_delay: float = 1.0, service_name: str = "API", constant_delay: bool = False) -> tuple:
     import time
@@ -254,24 +264,9 @@ def call_google_gemini(messages: List[dict], model: str = "gemini-2.5-flash", ti
     thread.start()
     thread.join(timeout=timeout)
     
-    if result["error"]:
-        logging.error(f"[GEMINI_RESULT_ERROR] {result['error']}")
-        return _make_response(result["error"], tool="gemini")
-    
-    if result["content"] is not None:
-        state.increment_models_executed()
-        return _make_response(result["content"], tool="gemini", input_tokens=result["input_tokens"], output_tokens=result["output_tokens"])
-    
-    if result["completed"]:
-        logging.warning("[GEMINI_COMPLETED_NO_CONTENT] Thread completed but no content")
-        return _make_response("[GOOGLE_ERROR]: No content returned from Gemini", tool="gemini")
-    
-    if thread.is_alive():
-        logging.error(f"[GEMINI_TIMEOUT] Gemini API did not respond within {timeout}s")
-        return _make_response(f"[GOOGLE_TIMEOUT]: Gemini API did not respond within {timeout} seconds", tool="gemini")
-    
-    logging.error("[GEMINI_INCOMPLETE] Thread terminated abnormally")
-    return _make_response("[GOOGLE_ERROR]: Thread terminated without completing", tool="gemini")
+    return _handle_thread_result(result, thread, timeout, tool="gemini",
+                                 error_prefix="GOOGLE_ERROR", timeout_prefix="GOOGLE_TIMEOUT",
+                                 service_label="Gemini")
 
 def call_mistral(model: str, messages: List[dict], timeout: int = 300) -> Dict:
     try:
@@ -353,24 +348,9 @@ def call_mistral(model: str, messages: List[dict], timeout: int = 300) -> Dict:
     thread.start()
     thread.join(timeout=timeout)
     
-    if result["error"]:
-        logging.error(f"[MISTRAL_RESULT_ERROR] {result['error']}")
-        return _make_response(result["error"], tool="mistral")
-    
-    if result["content"] is not None:
-        state.increment_models_executed()
-        return _make_response(result["content"], tool="mistral", input_tokens=result["input_tokens"], output_tokens=result["output_tokens"])
-    
-    if result["completed"]:
-        logging.warning("[MISTRAL_COMPLETED_NO_CONTENT] Thread completed but no content")
-        return _make_response("[MISTRAL_ERROR]: No content returned from Mistral", tool="mistral")
-    
-    if thread.is_alive():
-        logging.error(f"[MISTRAL_TIMEOUT] Mistral API did not respond within {timeout}s")
-        return _make_response(f"[MISTRAL_TIMEOUT]: Mistral API did not respond within {timeout} seconds", tool="mistral")
-    
-    logging.error("[MISTRAL_INCOMPLETE] Thread terminated abnormally")
-    return _make_response("[MISTRAL_ERROR]: Thread terminated without completing", tool="mistral")
+    return _handle_thread_result(result, thread, timeout, tool="mistral",
+                                 error_prefix="MISTRAL_ERROR", timeout_prefix="MISTRAL_TIMEOUT",
+                                 service_label="Mistral")
 
 def _load_glm_model(model_name: str):
     hf_model_id = _GLM_MODEL_MAP.get(model_name)
@@ -552,24 +532,9 @@ def call_glm(model_name: str, messages: List[dict], timeout: int = 300) -> Dict:
     thread.start()
     thread.join(timeout=timeout)
     
-    if result["error"]:
-        logging.error(f"[GLM_RESULT_ERROR] {result['error']}")
-        return _make_response(result["error"], tool="glm")
-    
-    if result["content"] is not None:
-        state.increment_models_executed()
-        return _make_response(result["content"], tool="glm", input_tokens=result["input_tokens"], output_tokens=result["output_tokens"])
-    
-    if result["completed"]:
-        logging.warning("[GLM_COMPLETED_NO_CONTENT] Thread completed but no content")
-        return _make_response("[GLM_ERROR]: No content returned from GLM model", tool="glm")
-    
-    if thread.is_alive():
-        logging.error(f"[GLM_TIMEOUT] GLM model did not respond within {timeout}s")
-        return _make_response(f"[GLM_TIMEOUT]: GLM model did not respond within {timeout} seconds", tool="glm")
-    
-    logging.error("[GLM_INCOMPLETE] Thread terminated abnormally")
-    return _make_response("[GLM_ERROR]: Thread terminated without completing", tool="glm")
+    return _handle_thread_result(result, thread, timeout, tool="glm",
+                                 error_prefix="GLM_ERROR", timeout_prefix="GLM_TIMEOUT",
+                                 service_label="GLM")
 
 __all__ = [
     'call_model',
