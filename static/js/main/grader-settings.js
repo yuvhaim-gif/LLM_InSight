@@ -28,7 +28,7 @@ function applyGraderSetting(name) {
                         var pct = Math.round(w * 100);
                         html += '<div class="weight-item-compact">' +
                             '<span class="weight-label-compact">' + k + '</span>' +
-                            '<input type="number" class="weight-input" data-category="' + k + '" data-weight-input="' + k + '" value="' + pct + '" min="0" max="100" step="1" onchange="checkManualWeightChanges()" oninput="updateWeightSumIndicator()" onkeypress="return event.key !== \'Enter\'">' +
+                            '<input type="number" class="weight-input" data-category="' + k + '" data-weight-input="' + k + '" value="' + pct + '" min="-100" max="100" step="1" onchange="checkManualWeightChanges()" oninput="updateWeightSumIndicator()" onkeypress="return event.key !== \'Enter\'">' +
                             '<span style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">%</span>' +
                             '</div>';
                     });

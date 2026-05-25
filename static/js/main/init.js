@@ -96,7 +96,6 @@ document.addEventListener('DOMContentLoaded', function() {
         var graderSelect = document.getElementById('graderSettingSelect');
         if (graderSelect) {
             graderSelect.value = loadedGraderSetting;
-            applyGraderSetting(loadedGraderSetting);
         }
         sessionStorage.removeItem('loaded_grader_setting_name');
     }
