@@ -667,7 +667,9 @@ function createDeeperAnalysisCharts(promptNumber, iterations, grading_keys) {
                         const nextSeries = buildAverageSeries();
                         degradationFlags = nextSeries.degradationFlags;
                         bestFlags = nextSeries.bestFlags;
- 
+
+                        deeperAnalysisAvgChart.data.datasets[0].data = nextSeries.layer1aScores;
+                        deeperAnalysisAvgChart.data.datasets[1].data = nextSeries.layer1bScores;
                         deeperAnalysisAvgChart.data.datasets[2].data = nextSeries.winners;
                         deeperAnalysisAvgChart.update();
                     }
