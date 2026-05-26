@@ -10,7 +10,7 @@ from flask import session
 
 from config import (
     LEDGER_FILE, BESTBEST_CACHE, BACKUP_DIR, ITERATION_HISTORY_FILE,
-    CONSOLE_OUTPUT_FILE, CATEGORY_WEIGHTS
+    CONSOLE_OUTPUT_FILE, CATEGORY_WEIGHTS, REVIEW_MANIFEST_DIR
 )
 from utils.common import utc_now_iso
 from utils.session import (
@@ -129,14 +129,14 @@ def clear_file(path: str):
 def backup_chat_json(prefix: str):
     try:
         if not os.path.exists(CONSOLE_OUTPUT_FILE):
-            return
+            return None
         
         with open(CONSOLE_OUTPUT_FILE, "r", encoding="utf-8") as f:
             console_output = f.read()
         
         if not console_output.strip():
             logging.info(f"Skipped chat JSON backup for '{prefix}' (console output empty)")
-            return
+            return None
         
         os.makedirs(BACKUP_DIR, exist_ok=True)
         
@@ -207,8 +207,10 @@ def backup_chat_json(prefix: str):
         
         logging.info(f"✅ Chat JSON backed up to {backup_filename}")
         print(f"✅ Chat JSON backed up to {backup_filename}")
+        return os.path.basename(backup_filename)
     except Exception as e:
         logging.error(f"Failed to backup chat JSON for '{prefix}': {e}")
+        return None
 
 def rotate_ledger():
     if os.path.exists(LEDGER_FILE):
@@ -258,3 +260,57 @@ def save_iteration_history(prompt_num: int, iteration_data_list: list, tools_tok
 
 def get_iteration_history() -> dict:
     return load_json(ITERATION_HISTORY_FILE) or {"prompts": {}}
+
+
+def _review_manifest_path(username: str) -> str:
+    safe_name = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in username)
+    return os.path.join(REVIEW_MANIFEST_DIR, f"review_manifest_{safe_name}.json")
+
+
+def get_review_manifest(username: str) -> list:
+    path = _review_manifest_path(username)
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                return data
+        except Exception as e:
+            logging.error(f"Failed to read review manifest: {e}")
+
+    existing = []
+    if os.path.exists(BACKUP_DIR):
+        try:
+            for fn in os.listdir(BACKUP_DIR):
+                if fn.startswith("chat_backup_") and fn.endswith(".json"):
+                    existing.append(fn)
+        except OSError:
+            pass
+    existing.sort(key=lambda fn: os.path.getmtime(os.path.join(BACKUP_DIR, fn))
+                  if os.path.exists(os.path.join(BACKUP_DIR, fn)) else 0,
+                  reverse=True)
+    _write_review_manifest(path, existing)
+    return existing
+
+
+def add_to_review_manifest(username: str, filename: str):
+    manifest = get_review_manifest(username)
+    if filename not in manifest:
+        manifest.insert(0, filename)
+        _write_review_manifest(_review_manifest_path(username), manifest)
+
+
+def remove_from_review_manifest(username: str, filename: str):
+    manifest = get_review_manifest(username)
+    if filename in manifest:
+        manifest.remove(filename)
+        _write_review_manifest(_review_manifest_path(username), manifest)
+
+
+def _write_review_manifest(path: str, manifest: list):
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logging.error(f"Failed to write review manifest: {e}")

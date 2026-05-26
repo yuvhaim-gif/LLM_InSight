@@ -113,6 +113,13 @@ function downloadAsJson() {
                 URL.revokeObjectURL(url);
                 closeDownloadModal();
                 
+                fetch('/save_chat_for_review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                }).catch(function(err) {
+                    console.warn('Failed to save chat for review:', err);
+                });
+                
                 console.log('✅ Complete chat backup downloaded with all continuity data');
             } else {
                 alert('Failed to gather backup data: ' + result.error);

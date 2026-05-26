@@ -11,7 +11,7 @@ from config import (
     DEFAULT_LAYER0_MODEL, DEFAULT_LAYER2_MODEL, LAYER3_GRADER_MODELS,
     CONSOLE_OUTPUT_FILE
 )
-from utils.file_io import save_json, clear_file
+from utils.file_io import save_json, clear_file, get_review_manifest, remove_from_review_manifest
 from utils.text_processing import extract_prompts_from_console, extract_all_best_best_from_console
 from utils.session import (
     set_large_session_data, get_current_model_selection, set_previous_model_selection
@@ -43,22 +43,19 @@ def parse_chat_backup_filename(filename):
 
 
 def get_chat_files_from_backup():
-    if not os.path.exists(DOWNLOADS_DIR):
-        return []
-    
+    username = session.get('user', '')
+    manifest = get_review_manifest(username)
+
     chat_files = []
-    try:
-        for filename in os.listdir(DOWNLOADS_DIR):
-            if filename.startswith('chat_backup_') and filename.endswith('.json'):
-                filepath = os.path.join(DOWNLOADS_DIR, filename)
-                try:
-                    mtime = os.path.getmtime(filepath)
-                    chat_files.append((filename, mtime))
-                except OSError:
-                    pass
-    except OSError:
-        pass
-    
+    for filename in manifest:
+        filepath = os.path.join(DOWNLOADS_DIR, filename)
+        if os.path.exists(filepath):
+            try:
+                mtime = os.path.getmtime(filepath)
+                chat_files.append((filename, mtime))
+            except OSError:
+                pass
+
     chat_files.sort(key=lambda x: x[1], reverse=True)
     return [f[0] for f in chat_files]
 
@@ -469,6 +466,7 @@ def delete_chat_file():
             return jsonify({'success': False, 'message': 'File not found'})
         
         os.remove(filepath)
+        remove_from_review_manifest(session.get('user', ''), filename)
         return jsonify({'success': True, 'message': 'Chat deleted successfully'})
     
     except Exception as e:

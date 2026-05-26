@@ -14,7 +14,7 @@ from config import (
     CATEGORY_WEIGHTS, LEDGER_FILE, BESTBEST_CACHE, ITERATION_HISTORY_FILE,
     CONSOLE_OUTPUT_FILE, AVAILABLE_GRADER_MODELS
 )
-from utils.file_io import backup_file, backup_chat_json, clear_file, load_json, load_console_output
+from utils.file_io import backup_file, backup_chat_json, clear_file, load_json, load_console_output, add_to_review_manifest
 from utils.session import (
     get_session_layer1a_model, get_session_layer1b_model, get_session_layer0_model,
     get_session_layer2_model, get_layer3_grader_models, get_session_weights,
@@ -430,6 +430,21 @@ def save_current_selection():
         return jsonify({'success': False, 'error': 'Not authenticated'}), 401
     session.modified = True
     return jsonify({'success': True})
+
+@api_bp.route('/save_chat_for_review', methods=['POST'])
+def save_chat_for_review():
+    if not check_auth():
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    try:
+        username = session.get(SK_USER, '')
+        filename = backup_chat_json("download")
+        if filename:
+            add_to_review_manifest(username, filename)
+            return jsonify({'success': True, 'filename': filename})
+        return jsonify({'success': False, 'error': 'No chat data to save'})
+    except Exception as e:
+        logging.error(f"Error saving chat for review: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @api_bp.route('/get_backup_data', methods=['GET'])
 def get_backup_data():
