@@ -2,7 +2,7 @@ import sys
 from typing import List, Optional, Dict, Any
 
 from config import DEFAULT_LAYER2_MODEL
-from models import Layer2Response, Layer2Critique
+from core.models import Layer2Response, Layer2Critique
 from utils.common import try_parse_json, traceable
 from utils.text_processing import clean_text_for_json
 from utils.session import get_session_layer2_model, get_advanced_layer2_models

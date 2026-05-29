@@ -41,7 +41,7 @@ from utils.session_keys import (
     SK_ADVANCED_LAYER2_MODELS
 )
 
-import state
+import core.state as state
 
 _LOGIN_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'templates', 'login.html')
 if os.path.exists(_LOGIN_TEMPLATE_PATH):

@@ -28,7 +28,7 @@ from utils.session_keys import (
     SK_MAX_ITERATIONS, SK_CUSTOM_WEIGHTS, SK_USER
 )
 from ai.iterative_loop import iterative_loop
-import state
+import core.state as state
 
 @main_bp.route('/', methods=['GET', 'POST'])
 def index():

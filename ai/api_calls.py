@@ -7,11 +7,11 @@ from datetime import datetime, timezone
 from typing import List, Union, Dict
 
 from config import (
-    _GEMINI_MODELS, _MISTRAL_MODELS, _GLM_MODELS, _GLM_MODEL_MAP
+    _GEMINI_MODELS, _MISTRAL_MODELS, _GLM_MODELS, _GLM_MODEL_MAP,
+    GOOGLE_API_KEY, MISTRAL_API_KEY
 )
-from secrets_config import GOOGLE_API_KEY, MISTRAL_API_KEY
 from utils.common import utc_now_iso, ERROR_PREFIXES
-import state
+import core.state as state
 
 try:
     from ollama import chat, ResponseError

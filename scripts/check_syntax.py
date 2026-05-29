@@ -1,4 +1,5 @@
-import ast, pathlib, sys
+import ast, pathlib, sys, os
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 files = [
     'ai/iterative_loop.py',

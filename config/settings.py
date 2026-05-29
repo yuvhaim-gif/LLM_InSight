@@ -2,9 +2,10 @@
 
 import os
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-from secrets_config import ADMIN_USER, ADMIN_PASS, FLASK_SECRET, LANGCHAIN_API_KEY, LANGCHAIN_PROJECT
+from config.secrets import ADMIN_USER, ADMIN_PASS, FLASK_SECRET, LANGCHAIN_API_KEY, LANGCHAIN_PROJECT
+from config.secrets import GOOGLE_API_KEY, MISTRAL_API_KEY
 
 PORT = int(os.environ.get("PORT", 5000))
 SSL_CERT_PATH = os.environ.get("SSL_CERT_PATH", "")
@@ -48,14 +49,15 @@ AVAILABLE_GRADER_MODELS = [
     "llama3.2:3b",
 ]
 
-LEDGER_FILE = os.path.join(BASE_DIR, "ledger.jsonl")
-BESTBEST_CACHE = os.path.join(BASE_DIR, "best_best_layer1.json")
+DATA_DIR = os.path.join(BASE_DIR, "data")
+LEDGER_FILE = os.path.join(DATA_DIR, "ledger.jsonl")
+BESTBEST_CACHE = os.path.join(DATA_DIR, "best_best_layer1.json")
 BACKUP_DIR = os.path.join(BASE_DIR, "backup")
-ITERATION_HISTORY_FILE = os.path.join(BASE_DIR, "iteration_history.json")
-CONSOLE_OUTPUT_FILE = os.path.join(BASE_DIR, "console_output.txt")
+ITERATION_HISTORY_FILE = os.path.join(DATA_DIR, "iteration_history.json")
+CONSOLE_OUTPUT_FILE = os.path.join(DATA_DIR, "console_output.txt")
 DOWNLOADS_DIR = os.path.join(BASE_DIR, "backup")
 REVIEW_MANIFEST_DIR = os.path.join(BASE_DIR, "backup")
-STATE_DB_PATH = os.path.join(BASE_DIR, "runtime_state.db")
+STATE_DB_PATH = os.path.join(DATA_DIR, "runtime_state.db")
 
 _CORE_MODELS = [
     "gemini-2.5-flash",

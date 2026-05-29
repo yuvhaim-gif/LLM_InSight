@@ -15,12 +15,15 @@ if _PROJECT_ROOT not in sys.path:
 
 import pytest
 from main import app as _flask_app
+from routes import register_routes
 import config
-import db as db_mod
+import core.db as db_mod
+
+register_routes(_flask_app)
 
 
 _FILE_PATH_ATTRS = ["LEDGER_FILE", "BESTBEST_CACHE", "ITERATION_HISTORY_FILE", "CONSOLE_OUTPUT_FILE"]
-_FILE_PATH_MODULES = ["config", "utils.file_io", "routes.api_routes", "routes.review_routes"]
+_FILE_PATH_MODULES = ["config", "config.settings", "utils.file_io", "routes.api_routes", "routes.review_routes"]
 
 
 def _patch_file_paths(monkeypatch, tmp_path):
@@ -49,20 +52,22 @@ def _patch_file_paths(monkeypatch, tmp_path):
             except AttributeError:
                 pass
 
-    for mod in ["config", "utils.file_io"]:
+    for mod in ["config", "config.settings", "utils.file_io"]:
         try:
             monkeypatch.setattr(f"{mod}.BACKUP_DIR", backup)
         except AttributeError:
             pass
 
     monkeypatch.setattr("config.DOWNLOADS_DIR", downloads)
+    monkeypatch.setattr("config.settings.DOWNLOADS_DIR", downloads)
     try:
         monkeypatch.setattr("routes.review_routes.DOWNLOADS_DIR", downloads)
     except AttributeError:
         pass
 
+    monkeypatch.setattr("config.settings.STATE_DB_PATH", db_path)
     monkeypatch.setattr("config.STATE_DB_PATH", db_path)
-    monkeypatch.setattr("db.STATE_DB_PATH", db_path)
+    monkeypatch.setattr("core.db.STATE_DB_PATH", db_path)
 
     return {
         "ledger": ledger,
@@ -77,13 +82,6 @@ def _patch_file_paths(monkeypatch, tmp_path):
 
 @pytest.fixture
 def app(tmp_path, monkeypatch):
-    if db_mod._connection:
-        try:
-            db_mod._connection.close()
-        except Exception:
-            pass
-    db_mod._connection = None
-
     _patch_file_paths(monkeypatch, tmp_path)
 
     _flask_app.config["TESTING"] = True
@@ -92,13 +90,6 @@ def app(tmp_path, monkeypatch):
     db_mod.init_db()
 
     yield _flask_app
-
-    if db_mod._connection:
-        try:
-            db_mod._connection.close()
-        except Exception:
-            pass
-    db_mod._connection = None
 
 
 @pytest.fixture

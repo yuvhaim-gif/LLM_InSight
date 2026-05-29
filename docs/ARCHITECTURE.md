@@ -7,7 +7,7 @@ How the tool is structured — components, data flow, and persistence. It enable
 | Component | Files | Role |
 |---|---|---|
 | App bootstrap | `main.py` | Flask app setup, startup/exit cleanup, SSL, signal handlers (SIGINT/SIGTERM), GLM preload |
-| Configuration | `config.py`, `secrets_config.py` | Model lists, file paths, default weights, credentials (via `.env`; only `APP_USER`, `APP_PASS`, `FLASK_SECRET` are required — provider API keys are optional and print a note at startup if missing) |
+| Configuration | `config/settings.py`, `config/secrets.py` | Model lists, file paths, default weights, credentials (via `.env`; only `APP_USER`, `APP_PASS`, `FLASK_SECRET` are required — provider API keys are optional and print a note at startup if missing) |
 | Grader settings | `utils/grader_settings.py`, `graderdata/*.jsonl` | Named grading configurations: keys, rubrics, models, weights (CRUD, JSONL storage) |
 | Web routes | `routes/web_routes.py` | Dashboard rendering (`/`, `/config_graders`), prompt submission |
 | API routes | `routes/api_routes.py` | Auth, model/weight/toggle updates, grader settings CRUD, progress, backup |
@@ -20,15 +20,15 @@ How the tool is structured — components, data flow, and persistence. It enable
 | Layer 2 | `ai/layer2.py` | Prompt rewriting using grader feedback, weights, and context |
 | Layer 3 | `ai/layer3.py` | Parallel multi-category grading with retries (1-8 configurable categories) |
 | Provider routing | `ai/api_calls.py` | Routes calls to Ollama, Mistral, Gemini, or GLM-4. Post-thread result handling consolidated in `_handle_thread_result` helper (used by Gemini, Mistral, GLM; Ollama preserves its timeout-specific print). When Ollama is not installed/importable, returns `[OLLAMA_ERROR]` prefix so the error is correctly detected by `is_error_response()` and Layer 3 grading is skipped |
-| Data models | `models.py` | Pydantic: `Layer2Response`, `Layer2Critique` |
+| Data models | `core/models.py` | Pydantic: `Layer2Response`, `Layer2Critique` |
 | Session helpers | `utils/session.py` | Session accessors, advanced mode detection, model selection tracking. Verbose accessor logs use `logging.debug` (not console print). `get_layer3_grader_models()` falls back to session-stored graders when the named grader setting file is missing on disk (e.g., after restoring a backup from another machine). Uses centralized key constants from `utils/session_keys.py` |
 | Session keys | `utils/session_keys.py` | Centralized string constants for all Flask session keys (`SK_LOGGED_IN`, `SK_USER`, `SK_PROMPT_HISTORY`, `SK_CUSTOM_WEIGHTS`, etc.). Imported by `utils/session.py`, `routes/api_routes.py`, `routes/web_routes.py`, and `ai/iterative_loop.py` to eliminate magic strings |
 | File I/O | `utils/file_io.py` | Ledger, history, backup, console output, chat JSON export. `backup_chat_json` guards session access with `has_request_context()` so exit-time backups succeed with file-based data when no Flask request context is available |
 | Text processing | `utils/text_processing.py` | Console parsing, similarity, deduplication, answer extraction. Pre-compiled regex constants for HTML tags, horizontal rules, whitespace, iteration/prompt markers. Batched `_CLEAN_REPLACEMENTS` tuple for `clean_answer_text` |
 | Common utilities | `utils/common.py` | Scoring, JSON parsing, error detection, `@traceable` wrapper, `ERROR_PREFIXES` constant, pre-compiled regex for code fences and JSON extraction. `create_failed_grade_entry` accepts optional `score_weights` to ensure correct score computation with custom grader keys |
 | Validation | `utils/validation.py` | Input/integer/float/model validators |
-| State database | `db.py` | SQLite-backed per-session state (iteration counter, processing flag, model counter) with thread-safe access. Uses per-call connections with `try/finally` to prevent stale connection issues |
-| Runtime state | `state.py` | Hybrid state module: delegates per-session serializable state to SQLite via `db.py`, keeps GLM cache/lock/cancel in-memory. Thread-local session ID cache (`set_cached_session_id`/`clear_cached_session_id`) avoids repeated Flask session lookups during loop runs |
+| State database | `core/db.py` | SQLite-backed per-session state (iteration counter, processing flag, model counter) with thread-safe access. Uses per-call connections with `try/finally` to prevent stale connection issues |
+| Runtime state | `core/state.py` | Hybrid state module: delegates per-session serializable state to SQLite via `core/db.py`, keeps GLM cache/lock/cancel in-memory. Thread-local session ID cache (`set_cached_session_id`/`clear_cached_session_id`) avoids repeated Flask session lookups during loop runs |
 | Frontend JS | `static/js/shared/` (utils, chart-helpers, deeper-analysis), `static/js/main/` (weights, filters, toggles, models, grader-settings, download, upload, processing, advanced, init), `static/js/review/` (state, chat-list, prompt-view, prompt-chart, modals, init), `static/js/config_graders.js` | Modular scripts loaded per page; shared modules provide common utilities and the Deeper Analysis modal |
 | Frontend CSS | `static/css/shared.css` (base reset, body gradient, star overlay, keyframes, footer, logo-circle, deeper-analysis modal), `static/css/main.css`, `static/css/review.css`, `static/css/config_graders.css` | Shared base styles loaded first; page-specific files contain only overrides and unique rules |
 | Template partials | `templates/partials/_head_common.html` (meta, favicon, font, shared.css), `_head_charts.html` (Chart.js CDN), `_footer.html`, `_logo_badge.html` (parameterized size), `_deeper_analysis_modal.html`, `_model_icon.html` (cloud icon macro), `_model_selector.html` (sidebar selector macro) | Jinja2 includes and macros eliminating repeated HTML across the 4 page templates |
@@ -150,11 +150,11 @@ The Review page (`/review_chats`) serves as a log and deeper analysis tool:
 | Store | Contents |
 |---|---|
 | Flask session | Auth, models, weights, toggles, prompt history, advanced maps, grader setting name, min_grade, max_iterations |
-| `ledger.jsonl` | Append-only Layer 1 and Layer 3 events with timestamps, models, tokens |
-| `iteration_history.json` | Prompt-indexed iteration arrays with scores, models, runtimes, tokens, A/B results |
-| `best_best_layer1.json` | Current best/tied entries with prompt number and timestamp |
-| `console_output.txt` | Captured runtime console stream |
-| `runtime_state.db` | SQLite database storing per-session runtime state (iteration counter, processing flag, models executed). Auto-created on first startup, cleaned up on exit |
+| `data/ledger.jsonl` | Append-only Layer 1 and Layer 3 events with timestamps, models, tokens |
+| `data/iteration_history.json` | Prompt-indexed iteration arrays with scores, models, runtimes, tokens, A/B results |
+| `data/best_best_layer1.json` | Current best/tied entries with prompt number and timestamp |
+| `data/console_output.txt` | Captured runtime console stream |
+| `data/runtime_state.db` | SQLite database storing per-session runtime state (iteration counter, processing flag, models executed). Auto-created on first startup, cleaned up on exit |
 | `backup/` | Timestamped copies created on lifecycle events |
 | `graderdata/` | JSONL grader setting files (key, rubric, grader, weight per line) |
 
@@ -181,7 +181,7 @@ GLM models are loaded once at startup and unloaded on exit or process signal, re
 
 ## Observability
 
-LangSmith/LangChain tracing enabled via environment variables in `config.py`. Each AI layer function uses `@traceable` (falls back to a no-op decorator if `langsmith` is not installed). The iterative loop is traced as a `chain` run type.
+LangSmith/LangChain tracing enabled via environment variables in `config/settings.py`. Each AI layer function uses `@traceable` (falls back to a no-op decorator if `langsmith` is not installed). The iterative loop is traced as a `chain` run type.
 
 ## References
 

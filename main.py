@@ -8,10 +8,10 @@ import logging
 import threading
 
 from flask import Flask
-from config import FLASK_SECRET, PORT, SSL_CERT_PATH, SSL_KEY_PATH, BACKUP_DIR
+from config import FLASK_SECRET, PORT, SSL_CERT_PATH, SSL_KEY_PATH, BACKUP_DIR, DATA_DIR
 from config import LEDGER_FILE, BESTBEST_CACHE, ITERATION_HISTORY_FILE, CONSOLE_OUTPUT_FILE
 from utils.file_io import backup_file, backup_chat_json, clear_file
-from db import init_db, cleanup_old_sessions
+from core.db import init_db, cleanup_old_sessions
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
@@ -75,8 +75,8 @@ if __name__ == '__main__':
     atexit.register(exit_backup)
     startup_cleanup()
     
-    if not os.path.exists(BACKUP_DIR):
-        os.makedirs(BACKUP_DIR)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(BACKUP_DIR, exist_ok=True)
     
     from ai.api_calls import preload_glm_models, unload_glm_models
     threading.Thread(target=preload_glm_models, daemon=True).start()

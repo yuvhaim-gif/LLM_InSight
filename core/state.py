@@ -1,5 +1,5 @@
 import threading
-import db
+import core.db as db
 
 _glm_model_cache = {}
 _glm_load_lock = threading.Lock()

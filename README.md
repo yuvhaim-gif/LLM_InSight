@@ -211,7 +211,7 @@ FLASK_SECRET=changeme
 
 The app runs with just these three variables. Missing optional keys are noted at startup; models routed to a provider without a key return error responses, but the app itself continues to work normally.
 
-> **Important:** The default Layer 2 (prompt improver) model is `open-mistral-nemo-2407`, which requires `MISTRAL_API_KEY`. If you are running Ollama-only without a Mistral key, either disable the **Change Prompt** toggle in the UI or change `DEFAULT_LAYER2_MODEL` in `config.py` to an Ollama model (e.g., `gemma2:9b`).
+> **Important:** The default Layer 2 (prompt improver) model is `open-mistral-nemo-2407`, which requires `MISTRAL_API_KEY`. If you are running Ollama-only without a Mistral key, either disable the **Change Prompt** toggle in the UI or change `DEFAULT_LAYER2_MODEL` in `config/settings.py` to an Ollama model (e.g., `gemma2:9b`).
 
 ### Pull Ollama Models
 
@@ -227,7 +227,7 @@ ollama pull qwen2.5:1.5b                # Layer 3 grader (conciseness, structure
 ollama pull llama3.2:3b                  # Layer 3 grader (creativity)
 ```
 
-The full list of preconfigured models is in `config.py`.
+The full list of preconfigured models is in `config/settings.py`.
 
 ### Run
 
@@ -243,11 +243,11 @@ Open `http://localhost:5000` and sign in with the credentials from your `.env` f
 
 If you only want to use a subset of providers, leave the corresponding API key out of `.env`:
 
-- **No Mistral**: omit `MISTRAL_API_KEY`. Avoid selecting Mistral models in the UI and update `DEFAULT_LAYER2_MODEL` in `config.py` to an Ollama or Gemini model.
+- **No Mistral**: omit `MISTRAL_API_KEY`. Avoid selecting Mistral models in the UI and update `DEFAULT_LAYER2_MODEL` in `config/settings.py` to an Ollama or Gemini model.
 - **No Google Gemini**: omit `GOOGLE_API_KEY`. Avoid selecting Gemini models in the UI.
 - **No LangSmith**: omit `LANGCHAIN_API_KEY`. Tracing fails silently; the app works normally.
-- **No GLM-4**: remove `glm-4-9b` and `glm-4-9b-chat` from the model lists in `config.py`. Optionally remove `transformers` and `torch` from `requirements.txt` to save disk space.
-- **No Ollama**: remove Ollama-only models from the model lists in `config.py`, remove `ollama` from `requirements.txt`, and update the default model constants (`DEFAULT_LAYER1A_MODEL`, `DEFAULT_LAYER1B_MODEL`, `DEFAULT_LAYER0_MODEL`, `LAYER3_GRADER_MODELS`).
+- **No GLM-4**: remove `glm-4-9b` and `glm-4-9b-chat` from the model lists in `config/settings.py`. Optionally remove `transformers` and `torch` from `requirements.txt` to save disk space.
+- **No Ollama**: remove Ollama-only models from the model lists in `config/settings.py`, remove `ollama` from `requirements.txt`, and update the default model constants (`DEFAULT_LAYER1A_MODEL`, `DEFAULT_LAYER1B_MODEL`, `DEFAULT_LAYER0_MODEL`, `LAYER3_GRADER_MODELS`).
 
 ---
 
@@ -256,22 +256,22 @@ If you only want to use a subset of providers, leave the corresponding API key o
 ### New Ollama model
 
 1. Pull it: `ollama pull your-model-name`
-2. Add the model name to the appropriate list(s) in `config.py`
+2. Add the model name to the appropriate list(s) in `config/settings.py`
 3. It appears in the UI dropdowns immediately
 
 ### New cloud API provider
 
-1. Add your API key to `.env` and load it in `secrets_config.py`
+1. Add your API key to `.env` and load it in `config/secrets.py`
 2. Add a routing check and call function in `ai/api_calls.py` (follow the existing Gemini/Mistral pattern)
-3. Add the model names to the lists in `config.py`
+3. Add the model names to the lists in `config/settings.py`
 
 ### New grader model
 
-Add the model name to `AVAILABLE_GRADER_MODELS` in `config.py`. The model must be available via Ollama. It will appear in the grader model dropdown on the Config Graders page.
+Add the model name to `AVAILABLE_GRADER_MODELS` in `config/settings.py`. The model must be available via Ollama. It will appear in the grader model dropdown on the Config Graders page.
 
 ### Changing defaults
 
-Edit the `DEFAULT_*` constants in `config.py` (`DEFAULT_LAYER1A_MODEL`, `DEFAULT_LAYER1B_MODEL`, `DEFAULT_LAYER0_MODEL`, `DEFAULT_LAYER2_MODEL`, `LAYER3_GRADER_MODELS`).
+Edit the `DEFAULT_*` constants in `config/settings.py` (`DEFAULT_LAYER1A_MODEL`, `DEFAULT_LAYER1B_MODEL`, `DEFAULT_LAYER0_MODEL`, `DEFAULT_LAYER2_MODEL`, `LAYER3_GRADER_MODELS`).
 
 ---
 
@@ -289,7 +289,7 @@ The contract tests validate backup schema, restore behavior, advanced model map 
 ## Persistence and Backup
 
 - **Session state**: authentication, selected models, weights, toggles, prompt history, advanced model maps, and the active grader setting name are stored in the server-side session and a SQLite database.
-- **Runtime files**: `ledger.jsonl` (append-only event log), `iteration_history.json`, `best_best_layer1.json`, `console_output.txt`, and `graderdata/` (JSONL grader settings).
+- **Runtime files**: `data/ledger.jsonl` (append-only event log), `data/iteration_history.json`, `data/best_best_layer1.json`, `data/console_output.txt`, and `graderdata/` (JSONL grader settings).
 - **Browser storage**: `localStorage` (domain filter, weight preset, system type) and `sessionStorage` (review-to-main handoff).
 - **Lifecycle**: startup, login, clear-chat, logout, exit, window close, and process signals each trigger backups of runtime files before clearing them.
 - **JSON export** (version 2.0): captures console output, prompt history, iteration history, best-best cache, ledger entries, and full session state. Restorable via upload or the Review page.
@@ -307,14 +307,14 @@ LangSmith/LangChain tracing is available on the orchestrating iterative loop and
 | Path | Purpose |
 |---|---|
 | `main.py` | Application entry point |
-| `config.py` | Models, paths, default weights |
-| `secrets_config.py` | Credentials loaded from `.env` |
+| `config/` | `settings.py` (models, paths, default weights), `secrets.py` (credentials via `.env`) |
+| `core/` | `db.py` (SQLite state), `models.py` (Pydantic schemas), `state.py` (hybrid state management) |
+| `data/` | Runtime working files (ledger, cache, history, console output, state DB) |
 | `graderdata/` | JSONL grader setting files |
 | `routes/` | `web_routes.py`, `api_routes.py`, `review_routes.py` |
 | `ai/` | `iterative_loop.py`, `iteration_summary.py`, `layer0.py`, `layer1.py`, `layer2.py`, `layer3.py`, `api_calls.py` |
-| `models.py` | Pydantic schemas (`Layer2Response`, `Layer2Critique`) |
 | `utils/` | `session.py`, `session_keys.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py` |
-| `state.py`, `db.py` | Hybrid state management (SQLite + in-memory) |
+| `scripts/` | Developer utility scripts (`check_syntax.py`, `check_modified.py`, `create_graderdata.py`) |
 | `templates/` | Jinja2 templates (login, main, review, config_graders) with shared partials |
 | `static/` | CSS, JavaScript, and assets |
 | `tests/` | Pytest contract tests |

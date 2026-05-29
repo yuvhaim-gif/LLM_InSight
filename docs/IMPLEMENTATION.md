@@ -174,7 +174,7 @@ Error responses use standardized prefixes: `[OLLAMA_TIMEOUT]`, `[OLLAMA_ERROR]`,
 
 ## Configuration
 
-### Environment Variables (`secrets_config.py`)
+### Environment Variables (`config/secrets.py`)
 
 Variables are loaded from `.env` via `python-dotenv`.
 
@@ -185,15 +185,15 @@ Variables are loaded from `.env` via `python-dotenv`.
 | `FLASK_SECRET` | **Yes** | Flask session encryption (`main.py`) |
 | `MISTRAL_API_KEY` | No | Mistral REST API calls (`ai/api_calls.py`) |
 | `GOOGLE_API_KEY` | No | Google Gemini REST API calls (`ai/api_calls.py`) |
-| `LANGCHAIN_API_KEY` | No | LangSmith tracing (`config.py` sets `LANGCHAIN_TRACING_V2`, `LANGSMITH_TRACING`) |
+| `LANGCHAIN_API_KEY` | No | LangSmith tracing (`config/settings.py` sets `LANGCHAIN_TRACING_V2`, `LANGSMITH_TRACING`) |
 | `LANGCHAIN_PROJECT` | No | LangSmith project name (default: `llminsight`) |
-| `PORT` | No | Server port (default: `5000`, read in `config.py`) |
+| `PORT` | No | Server port (default: `5000`, read in `config/settings.py`) |
 | `SSL_CERT_PATH` | No | HTTPS certificate path (`main.py`) |
 | `SSL_KEY_PATH` | No | HTTPS key path (`main.py`) |
 
 Startup behavior: missing required variables print an error and `sys.exit(1)`. Missing optional provider keys print a note to stderr and default to empty strings — providers with missing keys return error responses when called.
 
-### Model Configuration (`config.py`)
+### Model Configuration (`config/settings.py`)
 
 | Setting | Purpose |
 |---|---|
@@ -211,6 +211,18 @@ Startup behavior: missing required variables print an error and `sys.exit(1)`. M
 | `_GLM_MODELS` | Model names routed to GLM-4 HuggingFace inference |
 | `_GLM_MODEL_MAP` | Maps display model names to HuggingFace model IDs |
 | `CATEGORY_WEIGHTS` | Hardcoded fallback weights (lowest priority in weight chain) |
+
+### File Paths (`config/settings.py`)
+
+| Setting | Default Path | Purpose |
+|---|---|---|
+| `LEDGER_FILE` | `data/ledger.jsonl` | Append-only event log |
+| `BESTBEST_CACHE` | `data/best_best_layer1.json` | Current best/tied entries |
+| `ITERATION_HISTORY_FILE` | `data/iteration_history.json` | Prompt-indexed iteration data |
+| `CONSOLE_OUTPUT_FILE` | `data/console_output.txt` | Runtime console capture |
+| `STATE_DB_PATH` | `data/runtime_state.db` | SQLite per-session state |
+| `BACKUP_DIR` | `backup/` | Timestamped backup copies |
+| `GRADERDATA_DIR` | `graderdata/` | Grader setting JSONL files |
 
 ### Dependencies (`requirements.txt`)
 
@@ -240,37 +252,37 @@ One file per named setting. Each file has one JSON object per line: `{ key, rubr
 - `min_grade`: clamped to 0-100, default 100.
 - `max_iterations`: 1-5, default 5.
 - Weight updates require all active grader setting category keys, each value in [-1, 1]; auto-normalized to sum 1. Negative weights are allowed (positive weights must compensate so the total remains 100%).
-- Model updates validated against allow-lists in `config.py`.
+- Model updates validated against allow-lists in `config/settings.py`.
 - Grader setting saves require: name not `default`, max 8 entries, each entry has key/rubric/grader, grader in `AVAILABLE_GRADER_MODELS`.
 
 ## Extending the System
 
 ### Adding a new model (existing provider)
 
-1. Add the model name to the relevant list(s) in `config.py` (e.g. `_CORE_MODELS`, `AVAILABLE_LAYER0_MODELS`, `AVAILABLE_LAYER2_MODELS`).
+1. Add the model name to the relevant list(s) in `config/settings.py` (e.g. `_CORE_MODELS`, `AVAILABLE_LAYER0_MODELS`, `AVAILABLE_LAYER2_MODELS`).
 2. For Ollama models: pull the model with `ollama pull <name>`.
-3. For Gemini/Mistral: add the name to `_GEMINI_MODELS` or `_MISTRAL_MODELS` in `config.py`.
+3. For Gemini/Mistral: add the name to `_GEMINI_MODELS` or `_MISTRAL_MODELS` in `config/settings.py`.
 
 ### Adding a new API provider
 
-1. Add the API key variable to `.env` and load it in `secrets_config.py` (add to `_OPTIONAL` list).
+1. Add the API key variable to `.env` and load it in `config/secrets.py` (add to `_OPTIONAL` list).
 2. In `ai/api_calls.py`:
-   - Define a model name tuple (e.g. `_OPENAI_MODELS`) in `config.py`.
+   - Define a model name tuple (e.g. `_OPENAI_MODELS`) in `config/settings.py`.
    - Add a routing check in `call_model()` before the Ollama fallback.
    - Implement `call_yourprovider()` returning `_make_response(content, tool, input_tokens, output_tokens)`.
    - Use `_post_with_retry()` for HTTP calls with retry/backoff.
-3. Add model names to the UI lists in `config.py`.
+3. Add model names to the UI lists in `config/settings.py`.
 4. Add an error prefix pair (e.g. `[YOURAPI_TIMEOUT]`, `[YOURAPI_ERROR]`) and include in `is_error_response()`.
 
 ### Adding a new grader model
 
-Add the model name to `AVAILABLE_GRADER_MODELS` in `config.py`. Graders route through `call_model()` like any other call — the model must be available via one of the configured providers (typically Ollama for small models).
+Add the model name to `AVAILABLE_GRADER_MODELS` in `config/settings.py`. Graders route through `call_model()` like any other call — the model must be available via one of the configured providers (typically Ollama for small models).
 
 ### Disabling a provider
 
 - **Mistral/Gemini**: omit the API key from `.env`. Update `DEFAULT_LAYER2_MODEL` if it points to a model from the disabled provider.
-- **GLM-4**: remove model names from `_GLM_MODELS` and model lists in `config.py`. Optionally remove `transformers` and `torch` from `requirements.txt`.
-- **Ollama**: remove Ollama-only models from all lists in `config.py`. Update all `DEFAULT_LAYER*` and `LAYER3_GRADER_MODELS` to use cloud provider models. Remove `ollama` from `requirements.txt`.
+- **GLM-4**: remove model names from `_GLM_MODELS` and model lists in `config/settings.py`. Optionally remove `transformers` and `torch` from `requirements.txt`.
+- **Ollama**: remove Ollama-only models from all lists in `config/settings.py`. Update all `DEFAULT_LAYER*` and `LAYER3_GRADER_MODELS` to use cloud provider models. Remove `ollama` from `requirements.txt`.
 - **LangSmith**: omit `LANGCHAIN_API_KEY`. The `@traceable` decorator falls back to a no-op.
 
 ## JSON Schemas

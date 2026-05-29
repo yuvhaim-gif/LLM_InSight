@@ -15,7 +15,7 @@ from config import (
     BESTBEST_CACHE, ITERATION_HISTORY_FILE, 
     LANGCHAIN_API_KEY, LANGCHAIN_PROJECT
 )
-from models import Layer2Response, Layer2Critique
+from core.models import Layer2Response, Layer2Critique
 from utils.file_io import load_json, save_json, save_iteration_history
 from utils.text_processing import extract_answer_text
 from utils.session import (
@@ -25,7 +25,7 @@ from utils.session import (
     get_give_ideas_enabled, get_layer1_last_best_context_enabled, get_grade_vs_prompt_mode,
     is_advanced_mode_active
 )
-import state
+import core.state as state
 
 from ai.layer0 import layer0_micro_replies
 from ai.layer1 import layer1_generate_reply

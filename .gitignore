@@ -14,12 +14,8 @@ PI.py
 .env.*
 !.env.example
 
-# Runtime / working files
-ledger.jsonl
-best_best_layer1.json
-iteration_history.json
-console_output.txt
-runtime_state.db
+# Runtime / working data
+data/
 
 # Backups (large session data)
 backup/
@@ -45,6 +41,9 @@ graderdata/*
 
 # Large video files (GIF used for README demo)
 screenshots/*.mp4
+
+# Wiki (local copy, managed via separate wiki repo)
+wiki/
 
 # OS
 Thumbs.db
