@@ -7,7 +7,7 @@ How the tool is structured — components, data flow, and persistence. It enable
 | Component | Files | Role |
 |---|---|---|
 | App bootstrap | `main.py` | Flask app setup, startup/exit cleanup, SSL, signal handlers (SIGINT/SIGTERM), GLM preload |
-| Configuration | `config/settings.py`, `config/secrets.py` | Model lists, file paths, default weights, credentials (via `.env`; only `APP_USER`, `APP_PASS`, `FLASK_SECRET` are required — provider API keys are optional and print a note at startup if missing) |
+| Configuration | `config/settings.py`, `config/secrets.py`, `config/__init__.py` | Model lists, file paths, default weights, credentials (via `.env`; only `APP_USER`, `APP_PASS`, `FLASK_SECRET` are required — provider API keys are optional and print a note at startup if missing) |
 | Grader settings | `utils/grader_settings.py`, `graderdata/*.jsonl` | Named grading configurations: keys, rubrics, models, weights (CRUD, JSONL storage) |
 | Web routes | `routes/web_routes.py` | Dashboard rendering (`/`, `/config_graders`), prompt submission |
 | API routes | `routes/api_routes.py` | Auth, model/weight/toggle updates, grader settings CRUD, progress, backup |
@@ -182,6 +182,28 @@ GLM models are loaded once at startup and unloaded on exit or process signal, re
 ## Observability
 
 LangSmith/LangChain tracing enabled via environment variables in `config/settings.py`. Each AI layer function uses `@traceable` (falls back to a no-op decorator if `langsmith` is not installed). The iterative loop is traced as a `chain` run type.
+
+## Project Structure
+
+| Path | Purpose |
+|---|---|
+| `main.py` | Application entry point |
+| `config/` | `settings.py` (models, paths, default weights), `secrets.py` (credentials via `.env`), `__init__.py` |
+| `core/` | `db.py` (SQLite state), `models.py` (Pydantic schemas), `state.py` (hybrid state management) |
+| `data/` | Runtime working files (ledger, cache, history, console output, state DB) |
+| `graderdata/` | JSONL grader setting files |
+| `routes/` | `web_routes.py`, `api_routes.py`, `review_routes.py`, `__init__.py` |
+| `ai/` | `iterative_loop.py`, `iteration_summary.py`, `layer0.py`, `layer1.py`, `layer2.py`, `layer3.py`, `api_calls.py` |
+| `utils/` | `session.py`, `session_keys.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py` |
+| `scripts/` | Developer utility scripts (`check_syntax.py`, `check_modified.py`, `create_graderdata.py`) |
+| `templates/` | Jinja2 templates (`login.html`, `main.html`, `review.html`, `config_graders.html`) + `partials/` |
+| `static/css/` | `shared.css`, `main.css`, `review.css`, `config_graders.css` |
+| `static/js/shared/` | `utils.js`, `chart-helpers.js`, `deeper-analysis.js` |
+| `static/js/main/` | `init.js`, `weights.js`, `filters.js`, `toggles.js`, `models.js`, `grader-settings.js`, `download.js`, `upload.js`, `processing.js`, `advanced.js` |
+| `static/js/review/` | `init.js`, `state.js`, `chat-list.js`, `prompt-view.js`, `prompt-chart.js`, `modals.js` |
+| `static/js/` | `config_graders.js` |
+| `tests/` | `conftest.py`, `test_backup_schema.py`, `test_restore_behavior.py`, `test_advanced_map_compat.py`, `test_auth_matrix.py`, `test_provider_routing.py` |
+| `screenshots/` | Demo GIF and images |
 
 ## References
 
