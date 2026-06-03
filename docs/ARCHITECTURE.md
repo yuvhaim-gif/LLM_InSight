@@ -12,7 +12,8 @@ How the tool is structured — components, data flow, and persistence. It enable
 | Web routes | `routes/web_routes.py` | Dashboard rendering (`/`, `/config_graders`), prompt submission |
 | API routes | `routes/api_routes.py` | Auth, model/weight/toggle updates, grader settings CRUD, progress, backup |
 | Review routes | `routes/review_routes.py` | Saved-chat browsing, load, delete, upload, backup analysis |
-| Blueprint registration | `routes/__init__.py` | Registers `api_bp` and `main_bp` |
+| Blueprint registration | `routes/__init__.py` | Registers `api_bp`, `main_bp`, and the Preference Studio `pref_bp` |
+| Preference Studio | `preference/` (`store.py`, `extract.py`, `active_learning.py`, `calibrate.py`, `dataset.py`, `export.py`, `routes.py`) | Isolated human-in-the-loop layer: pairwise judging, grader calibration metrics/re-fit/re-grade, curated pool building, and training-set export. Calls existing grading logic; never mutates the live ledger. State lives in its own SQLite DB and export/regrade dirs. Routes `/arena` and `/dataset` render the unified `studio.html`. See [preference_studio.md](./preference_studio.md) |
 | Loop orchestrator | `ai/iterative_loop.py` | Runs the full iteration pipeline per prompt. Token usage accumulated incrementally via `_merge_token_usage` across all 6 layers (layer0, layer1a, layer1b, layer2, layer3a, layer3b), including Layer 3's nested per-category structure (no post-loop scan). Session ID cached in thread-local at loop entry. Summary display and tie resolution delegated to `ai/iteration_summary.py` |
 | Iteration summary | `ai/iteration_summary.py` | Extracted presentation logic: `resolve_ties_and_save` (tie deduplication + final cache save), `print_model_usage_summary` (per-iteration model usage), `print_final_summary` (best-best/tie/fallback display). Called by the loop orchestrator at the end of each prompt run |
 | Layer 0 | `ai/layer0.py` | Brainstorming ideas (optional, runs once before loop) |
@@ -117,6 +118,24 @@ The Review page (`/review_chats`) serves as a log and deeper analysis tool:
 - Analyze Deeper modal with average grade bar/radar charts, token usage chart, runtime chart, per-key charts, adjustable weights for what-if, and grader setting context.
 - Load past sessions back into the main page for continued experimentation.
 
+### Preference Studio (Human-in-the-Loop Calibration)
+
+The Preference Studio (`/arena` and `/dataset`, both rendering the unified `studio.html`) closes
+the loop between human judgment and the automated grader:
+
+- **Judge tab** — pick a source (live ledger or a saved backup), Scan to build an active-learning
+  queue of the hardest/most-uncertain pairs, and vote (better / tie / both bad), optionally adding
+  scalar grades, pinning ground truth, or writing a gold answer via Refine.
+- **Calibration panel** (on `/config_graders`) — live pairwise accuracy, Cohen's κ, Spearman, and
+  per-attribute alignment; re-fit weights (no model calls) or full re-grade (re-runs Layer 3 with
+  a candidate config into an isolated dir, never the live ledger).
+- **Build & Export tab** — assemble curated pools from the ticked sources, filter by band/
+  confidence, and export training-ready JSONL (+ provenance sidecar + dataset card) for a
+  production model or a trainable pass/fail judge.
+
+All Preference Studio state is isolated (own SQLite DB + export/regrade dirs) and never touched by
+the app's clear/backup of the live session. Full detail in [preference_studio.md](./preference_studio.md).
+
 ## Controls
 
 ### Backend (session-stored, updated via API)
@@ -157,6 +176,9 @@ The Review page (`/review_chats`) serves as a log and deeper analysis tool:
 | `data/runtime_state.db` | SQLite database storing per-session runtime state (iteration counter, processing flag, models executed). Auto-created on first startup, cleaned up on exit |
 | `backup/` | Timestamped copies created on lifecycle events |
 | `graderdata/` | JSONL grader setting files (key, rubric, grader, weight per line) |
+| `data/preferences.db` | Preference Studio SQLite DB: judgments, queue, blacklist, calibration runs. Auto-created on first use; isolated from the live session |
+| `data/preferences_export/` | Exported training datasets (JSONL + `*.meta.jsonl` sidecar + `*.card.json`), written atomically |
+| `data/preferences_regrade/` | Tier-B re-grade artifacts (never the live ledger) |
 
 ### Browser-side
 
@@ -193,16 +215,21 @@ LangSmith/LangChain tracing enabled via environment variables in `config/setting
 | `data/` | Runtime working files (ledger, cache, history, console output, state DB) |
 | `graderdata/` | JSONL grader setting files |
 | `routes/` | `web_routes.py`, `api_routes.py`, `review_routes.py`, `__init__.py` |
+| `preference/` | `store.py`, `extract.py`, `active_learning.py`, `calibrate.py`, `dataset.py`, `export.py`, `routes.py`, `__init__.py` (Preference Studio) |
 | `ai/` | `iterative_loop.py`, `iteration_summary.py`, `layer0.py`, `layer1.py`, `layer2.py`, `layer3.py`, `api_calls.py` |
 | `utils/` | `session.py`, `session_keys.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py` |
 | `scripts/` | Developer utility scripts (`check_syntax.py`, `check_modified.py`, `create_graderdata.py`) |
-| `templates/` | Jinja2 templates (`login.html`, `main.html`, `review.html`, `config_graders.html`) + `partials/` |
-| `static/css/` | `shared.css`, `main.css`, `review.css`, `config_graders.css` |
+| `templates/` | Jinja2 templates (`login.html`, `main.html`, `review.html`, `config_graders.html`, `studio.html`) + `partials/` |
+| `static/css/` | `shared.css`, `main.css`, `review.css`, `config_graders.css`, `studio.css`, `arena.css`, `dataset.css` |
 | `static/js/shared/` | `utils.js`, `chart-helpers.js`, `deeper-analysis.js` |
 | `static/js/main/` | `init.js`, `weights.js`, `filters.js`, `toggles.js`, `models.js`, `grader-settings.js`, `download.js`, `upload.js`, `processing.js`, `advanced.js` |
 | `static/js/review/` | `init.js`, `state.js`, `chat-list.js`, `prompt-view.js`, `prompt-chart.js`, `modals.js` |
+| `static/js/studio/` | `init.js` (page orchestrator; reuses the `arena/`, `dataset/`, `calibrate/` logic modules) |
+| `static/js/arena/` | `state.js`, `api.js`, `arena.js`, `refine.js` (judging logic) |
+| `static/js/dataset/` | `table.js`, `export.js` (build/export logic) |
+| `static/js/calibrate/` | `panel.js` (Calibration panel on Config Graders) |
 | `static/js/` | `config_graders.js` |
-| `tests/` | `conftest.py`, `test_backup_schema.py`, `test_restore_behavior.py`, `test_advanced_map_compat.py`, `test_auth_matrix.py`, `test_provider_routing.py` |
+| `tests/` | `conftest.py`, `test_backup_schema.py`, `test_restore_behavior.py`, `test_advanced_map_compat.py`, `test_auth_matrix.py`, `test_provider_routing.py`, `test_pref_*.py` (Preference Studio) |
 | `screenshots/` | Demo GIF and images |
 
 ## References
@@ -210,4 +237,5 @@ LangSmith/LangChain tracing enabled via environment variables in `config/setting
 - [README.md](../README.md)
 - [IMPLEMENTATION.md](./IMPLEMENTATION.md)
 - [REFACTORING.md](./REFACTORING.md)
+- [preference_studio.md](./preference_studio.md)
 - [user guide.md](./user%20guide.md)

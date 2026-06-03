@@ -14,11 +14,15 @@ PI.py
 .env.*
 !.env.example
 
-# Runtime / working data
-data/
+# Runtime / working data (incl. Preference Studio: preferences.db, preferences_export/,
+# preferences_regrade/). Folder is kept via .gitkeep so a fresh clone has the dir the app
+# writes into; all actual runtime contents stay ignored.
+data/*
+!data/.gitkeep
 
-# Backups (large session data)
-backup/
+# Backups (large session data). Folder kept via .gitkeep; contents ignored.
+backup/*
+!backup/.gitkeep
 
 # IDE / tool caches
 .zencoder/
@@ -49,3 +53,6 @@ wiki/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Local planning docs (ignored from pushes)
+docs/plan.md

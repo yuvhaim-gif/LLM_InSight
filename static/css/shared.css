@@ -177,3 +177,78 @@ body::before {
 .deeper-analysis-chart-container canvas {
     max-height: 350px;
 }
+
+.info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: help;
+    position: relative;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.info-icon:hover::after,
+.info-icon:focus-visible::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2d3436;
+    color: #ffffff;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    pointer-events: none;
+    animation: tooltipFadeIn 0.2s ease-in;
+}
+
+.info-icon[data-tooltip]:hover::after,
+.info-icon[data-tooltip]:focus-visible::after {
+    white-space: normal;
+    max-width: 280px;
+    line-height: 1.4;
+}
+
+.info-icon:hover::before,
+.info-icon:focus-visible::before {
+    content: '';
+    position: absolute;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #2d3436;
+    z-index: 1001;
+    pointer-events: none;
+}
+
+.info-icon:focus-visible {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}

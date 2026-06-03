@@ -18,12 +18,14 @@ from main import app as _flask_app
 from routes import register_routes
 import config
 import core.db as db_mod
+import preference.store as pref_store_mod
 
 register_routes(_flask_app)
 
 
 _FILE_PATH_ATTRS = ["LEDGER_FILE", "BESTBEST_CACHE", "ITERATION_HISTORY_FILE", "CONSOLE_OUTPUT_FILE"]
-_FILE_PATH_MODULES = ["config", "config.settings", "utils.file_io", "routes.api_routes", "routes.review_routes"]
+_FILE_PATH_MODULES = ["config", "config.settings", "utils.file_io", "routes.api_routes", "routes.review_routes",
+                      "preference.extract", "preference.routes"]
 
 
 def _patch_file_paths(monkeypatch, tmp_path):
@@ -60,14 +62,35 @@ def _patch_file_paths(monkeypatch, tmp_path):
 
     monkeypatch.setattr("config.DOWNLOADS_DIR", downloads)
     monkeypatch.setattr("config.settings.DOWNLOADS_DIR", downloads)
-    try:
-        monkeypatch.setattr("routes.review_routes.DOWNLOADS_DIR", downloads)
-    except AttributeError:
-        pass
+    for mod in ["routes.review_routes", "preference.extract", "preference.routes"]:
+        try:
+            monkeypatch.setattr(f"{mod}.DOWNLOADS_DIR", downloads)
+        except AttributeError:
+            pass
 
     monkeypatch.setattr("config.settings.STATE_DB_PATH", db_path)
     monkeypatch.setattr("config.STATE_DB_PATH", db_path)
     monkeypatch.setattr("core.db.STATE_DB_PATH", db_path)
+
+    prefs_db = str(tmp_path / "preferences.db")
+    prefs_export = str(tmp_path / "preferences_export")
+    prefs_regrade = str(tmp_path / "preferences_regrade")
+    for mod in ["config", "config.settings", "preference.store"]:
+        try:
+            monkeypatch.setattr(f"{mod}.PREFERENCES_DB", prefs_db)
+        except AttributeError:
+            pass
+    for mod in ["config", "config.settings", "preference.export"]:
+        try:
+            monkeypatch.setattr(f"{mod}.PREFERENCE_EXPORT_DIR", prefs_export)
+        except AttributeError:
+            pass
+    for mod in ["config", "config.settings", "preference.calibrate"]:
+        try:
+            monkeypatch.setattr(f"{mod}.PREFERENCE_REGRADE_DIR", prefs_regrade)
+        except AttributeError:
+            pass
+    pref_store_mod.init_pref_db()
 
     return {
         "ledger": ledger,

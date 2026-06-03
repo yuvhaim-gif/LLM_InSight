@@ -136,3 +136,29 @@ CATEGORY_WEIGHTS = {
     "creativity": 0.25,
     "structure": 0.10
 }
+
+PREFERENCES_DB        = os.path.join(DATA_DIR, "preferences.db")
+PREFERENCE_EXPORT_DIR = os.path.join(DATA_DIR, "preferences_export")
+PREFERENCE_REGRADE_DIR = os.path.join(DATA_DIR, "preferences_regrade")
+
+ARENA_QUEUE_WEIGHTS = {"closeness": 0.4, "category": 0.3, "rank_conflict": 0.2, "borderline": 0.1}
+
+ARENA_CROSS_MAX_PER_PROMPT = 6
+ARENA_CROSS_MIN_GAP        = 5
+ARENA_PASS_THRESHOLDS      = (50, 75, 95)
+
+DATASET_AUTO_MIN_MARGIN    = 10
+DATASET_AUTO_MIN_CONF      = 0.66
+DATASET_MAX_PER_PROMPT     = 8
+DATASET_TEST_SPLIT         = 0.10
+DATASET_GROUNDTRUTH_MIN    = 50
+
+DATASET_DEFAULT_FORMAT     = "preference"
+DATASET_EXPORT_CONVERSATIONAL = False
+
+JUDGE_PASS_GRADE = 75
+JUDGE_FAIL_GRADE = 50
+JUDGE_GEN_INSTRUCTION = (
+    "You are a strict grader. Given the task and the answer, reply PASS if the answer fully and "
+    "correctly satisfies the task, otherwise FAIL.\n\n[Task]: {prompt}\n[Answer]: {answer}\n[Verdict]:")
+JUDGE_CLS_TEMPLATE = "[Task]: {prompt}\n[Answer]: {answer}"

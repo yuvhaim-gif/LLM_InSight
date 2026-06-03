@@ -10,3 +10,6 @@ def register_routes(app):
     
     app.register_blueprint(api_bp)
     app.register_blueprint(main_bp)
+
+    from preference import register_preference
+    register_preference(app)

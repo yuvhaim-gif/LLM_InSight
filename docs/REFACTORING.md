@@ -16,6 +16,12 @@ Guidance for maintaining and evolving the tool without breaking existing behavio
 - Error response prefixes: `[OLLAMA_TIMEOUT]`, `[OLLAMA_ERROR]`, `[GOOGLE_TIMEOUT]`, `[GOOGLE_ERROR]`, `[MISTRAL_TIMEOUT]`, `[MISTRAL_ERROR]`, `[GLM_TIMEOUT]`, `[GLM_ERROR]`.
 - A/B test result structure per iteration: `original_score`, `improved_score`, `winner`.
 - Weight normalization behavior: auto-normalized to sum 1, cleared when switching grader settings.
+- Preference Studio isolation: all its state lives in `data/preferences.db` plus
+  `data/preferences_export/` and `data/preferences_regrade/`. It only **calls** existing grading
+  logic and never writes to the live ledger; the app's clear/backup lifecycle must not touch these.
+- Preference Studio routes (`pref_bp` in `preference/routes.py`) and their JSON payload shapes are
+  consumed by `static/js/studio/init.js` and the reused `arena/`, `dataset/`, `calibrate/` modules.
+  The `/arena` and `/dataset` URLs both render `studio.html` (Judge / Build & Export tabs).
 
 ## Frontend/Backend Coupling
 
@@ -101,4 +107,5 @@ Guidance for maintaining and evolving the tool without breaking existing behavio
 - [README.md](../README.md)
 - [ARCHITECTURE.md](./ARCHITECTURE.md)
 - [IMPLEMENTATION.md](./IMPLEMENTATION.md)
+- [preference_studio.md](./preference_studio.md)
 - [user guide.md](./user%20guide.md)

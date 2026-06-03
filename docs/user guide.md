@@ -159,6 +159,37 @@ The review page serves as both a log of past runs and a deeper analysis tool.
 - **Upload Chat** — import and restore a JSON backup file.
 - **Back to Analysis** — returns to main page.
 
+### Preference Studio (`/arena` and `/dataset`)
+
+One page with two tabs (and a shared source list on the left). It lets **you** teach the
+automated grader your taste and then turn that into training data. Both links from the main page
+open the same page — one on the **Judge** tab, the other on the **Build & Export** tab. A
+**How it works** banner at the top restates the four steps below, and every control has a small
+**(i)** info icon you can hover or focus for an explanation.
+
+The flow:
+
+1. **Judge** — On the left, pick where the answer pairs come from: tick a source's checkbox to
+   include it when building datasets, or click a source name (or its **🥊 Grade** button) to judge
+   that chat. Press **Scan** to queue the hardest/most-uncertain pairs, then for each pair choose
+   **A better**, **B better**, **Tie**, or **Both bad**. You can optionally type your own 1–100
+   grade for each side. Keyboard shortcuts: ←/→ pick a side, ↓ tie, `b` both bad, `g` ground
+   truth, `r` refine.
+2. **Anchor** — Press **★ Ground truth** to pin a verdict you fully trust, or **✍️ Refine** (also
+   opened by *Both bad*) to write the correct "gold" answer and optionally blacklist both shown
+   answers as never-good.
+3. **Calibrate** — Open **⚙️ Config Graders**. The Calibration panel there shows how closely the
+   grader agrees with your votes (accuracy, Cohen's κ, and more). **Re-fit weights** suggests
+   better weights instantly (no model calls); **Full re-grade** re-runs the graders with a
+   candidate config (slower, calls models). Apply and Save when satisfied.
+4. **Build & Export** — Switch to the **Build & Export** tab. Choose a training target
+   (**Production model** or **Pass/Fail judge**), build the pools from the ticked sources, filter
+   by quality band / confidence, **Preview**, and **Download** a training-ready JSONL file.
+   Uncertain rows can be sent back to the Judge tab with **Send REVIEW → Judge**.
+
+Repeat until the grader matches your judgment well enough for your goal. Everything you do here is
+saved separately from your normal runs, so it never disturbs the live session or your backups.
+
 ---
 
 ## How the Loop Works

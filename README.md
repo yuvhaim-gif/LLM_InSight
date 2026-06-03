@@ -1,6 +1,6 @@
 # LLM InSights
 
-> A local-first testing and optimization harness for iterative content creation — run multi-model A/B tests, refine prompts automatically with rubric-based grading, and generate scored synthetic data. Built for brand content workflows, prompt engineering, and LLM evaluation on your own hardware.
+> A local-first testing and optimization harness for iterative content creation — run multi-model A/B tests, refine prompts automatically with rubric-based grading, calibrate the grader to your own taste, and export training-ready datasets. Built for brand content workflows, prompt engineering, LLM evaluation, and dataset curation on your own hardware.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
@@ -18,6 +18,8 @@ The pipeline runs locally by default using Ollama, with optional cloud API suppo
 
 Each run produces a structured record of prompts, answers, scores, token counts, and model metadata — useful as refined synthetic data, prompt optimization logs, or content quality benchmarks.
 
+When you want the grader to match **your** judgment, **Preference Studio** closes the loop: you judge answer pairs head-to-head, watch live alignment metrics (pairwise accuracy, Cohen's κ, Spearman) on the calibration panel, re-fit weights or re-grade until the grader agrees with you, and then export curated, training-ready JSONL datasets — for either the production model (SFT / DPO / KTO) or a trainable pass/fail judge.
+
 ---
 
 ## Key Capabilities
@@ -30,7 +32,10 @@ Each run produces a structured record of prompts, answers, scores, token counts,
 - **Token Tracking** — Input, output, and total token counts are recorded per model per layer per iteration and aggregated by provider. Token usage is visible in the deeper analysis charts.
 - **Tie Detection** — When multiple iterations produce the same best score, the system identifies tied answers, deduplicates by text similarity, and reports alternatives.
 - **Session Review and Analysis** — Browse, load, and analyze past runs with per-prompt iteration stats, score grids, and an in-depth analysis modal featuring average grade bar charts, radar overlays, per-category score breakdowns, token usage charts, runtime comparisons, and adjustable weight sliders for live what-if recalculation.
-- **REST API** — All UI actions are backed by JSON endpoints (`/iteration`, `/is-processing`, `/get_backup_data`, `/update_weights`, `/save_advanced_models`, `/grader_settings`, `/grader_setting/<name>`, and more). Programmatic access to model selection, weight management, grader configuration, and session backup is available out of the box.
+- **Preference Studio (Human-in-the-Loop)** — A unified `/arena` + `/dataset` page to judge answer pairs (which is better, a tie, or both bad), give your own 1–100 grades, pin ground truth, write gold answers, and blacklist bad answers. An active-learning queue surfaces the hardest / most-uncertain pairs first.
+- **Grader Calibration** — A calibration panel (on Config Graders) measures, live, how well the current grader reproduces your judgments (pairwise accuracy, Cohen's κ, Spearman, per-attribute alignment). Re-fit weights instantly (no model calls) or run a full re-grade with a candidate config, then apply and save.
+- **Training-Dataset Export** — Build curated pools from exactly the sources you pick and export training-ready JSONL for a **production model** (`sft`, `preference`/DPO, `kto`) or a trainable **pass/fail judge** (`preference`/reward, `judge_cls`, `judge_gen`), each with a provenance sidecar and a summary card. All state is isolated from the live session.
+- **REST API** — All UI actions are backed by JSON endpoints — analysis (`/iteration`, `/is-processing`, `/get_backup_data`, `/update_weights`, `/save_advanced_models`, `/grader_settings`, `/grader_setting/<name>`) and Preference Studio (`/api/arena/*`, `/api/calibrate/*`, `/api/dataset/*`). Programmatic access to model selection, weight management, grader configuration, session backup, judging, calibration, and dataset export is available out of the box.
 
 ---
 
@@ -72,8 +77,32 @@ The loop ends when the first of these is met:
 |---|---|---|
 | **Login** | `/login` | Simple authentication with an animated background |
 | **Main Analysis** | `/` | Run experiments, configure models and toggles, view live results and charts |
-| **Config Graders** | `/config_graders` | Create and edit grading rubrics — categories, rubric text, grader models, weights |
+| **Config Graders** | `/config_graders` | Create and edit grading rubrics — categories, rubric text, grader models, weights. Also hosts the **Calibration panel** (see Preference Studio) |
 | **Review History** | `/review_chats` | Browse saved runs, load or delete past sessions, open the deeper analysis modal |
+| **Preference Studio** | `/arena`, `/dataset` | Unified human-in-the-loop page with two tabs — **Judge** (pairwise judging to calibrate the grader and gather ground truth) and **Build & Export** (turn judgments, blacklist, and machine grades into training-ready JSONL). Both URLs open the same page on the matching tab |
+
+---
+
+## Preference Studio
+
+A human-in-the-loop layer that calibrates the grader to **your** judgment and exports
+training-ready datasets. It is a single page — **Preference Studio** — with two tabs (a shared
+source rail spans both). See **[docs/preference_studio.md](docs/preference_studio.md)** for the
+full operator + developer guide.
+
+The loop: judge answer pairs in the **Judge** tab → watch alignment metrics on the **Calibration
+panel** (on Config Graders) and re-fit weights or re-grade → assemble curated pools in the
+**Build & Export** tab and export. The on-page *How it works* banner restates these steps.
+
+**Two training targets** (pick on the Build & Export tab):
+
+- **Production model** — the model that performs the task. Formats: `sft` (good answers),
+  `preference` (DPO/reward, chosen vs rejected), `kto` (good + bad).
+- **Pass/Fail judge** — a trainable Layer-3 grader. Formats: `preference` (reward model),
+  `judge_cls` (binary classifier), `judge_gen` (generative PASS/FAIL).
+
+All Preference Studio state lives in an isolated `preferences.db` plus separate export/regrade
+directories; the live ledger is read-only here and never modified by re-grading.
 
 ---
 
@@ -282,7 +311,7 @@ pip install -r requirements-dev.txt
 pytest tests/ -v --tb=short
 ```
 
-The contract tests validate backup schema, restore behavior, advanced model map compatibility, auth matrix, and provider routing. Tests use monkeypatched temp directories and an isolated SQLite database — no production files are touched, no AI models are called, and no `.env` file is required.
+The contract tests validate backup schema, restore behavior, advanced model map compatibility, auth matrix, provider routing, and the full Preference Studio package (`test_pref_*`: store, extraction, active-learning queue, calibration, dataset pools/examples, export, routes, and wiring). Tests use monkeypatched temp directories and an isolated SQLite database — no production files are touched, no AI models are called, and no `.env` file is required.
 
 ---
 
@@ -290,6 +319,7 @@ The contract tests validate backup schema, restore behavior, advanced model map 
 
 - **Session state**: authentication, selected models, weights, toggles, prompt history, advanced model maps, and the active grader setting name are stored in the server-side session and a SQLite database.
 - **Runtime files**: `data/ledger.jsonl` (append-only event log), `data/iteration_history.json`, `data/best_best_layer1.json`, `data/console_output.txt`, and `graderdata/` (JSONL grader settings).
+- **Preference Studio (isolated)**: `data/preferences.db` (judgments, queue, blacklist, calibration runs) plus `data/preferences_export/` and `data/preferences_regrade/`. These are never touched by the live session's clear/backup, and re-grading never writes to the ledger.
 - **Browser storage**: `localStorage` (domain filter, weight preset, system type) and `sessionStorage` (review-to-main handoff).
 - **Lifecycle**: startup, login, clear-chat, logout, exit, window close, and process signals each trigger backups of runtime files before clearing them.
 - **JSON export** (version 2.0): captures console output, prompt history, iteration history, best-best cache, ledger entries, and full session state. Restorable via upload or the Review page.
@@ -309,15 +339,16 @@ LangSmith/LangChain tracing is available on the orchestrating iterative loop and
 | `main.py` | Application entry point |
 | `config/` | `settings.py` (models, paths, default weights), `secrets.py` (credentials via `.env`) |
 | `core/` | `db.py` (SQLite state), `models.py` (Pydantic schemas), `state.py` (hybrid state management) |
-| `data/` | Runtime working files (ledger, cache, history, console output, state DB) |
+| `data/` | Runtime working files (ledger, cache, history, console output, state DB, and the isolated `preferences.db` + `preferences_export/` / `preferences_regrade/` dirs). Auto-created on first run; git-ignored except a `.gitkeep` placeholder |
 | `graderdata/` | JSONL grader setting files |
 | `routes/` | `web_routes.py`, `api_routes.py`, `review_routes.py` |
+| `preference/` | Isolated Preference Studio package: `store.py`, `extract.py`, `active_learning.py`, `calibrate.py`, `dataset.py`, `export.py`, `routes.py` |
 | `ai/` | `iterative_loop.py`, `iteration_summary.py`, `layer0.py`, `layer1.py`, `layer2.py`, `layer3.py`, `api_calls.py` |
 | `utils/` | `session.py`, `session_keys.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py` |
 | `scripts/` | Developer utility scripts (`check_syntax.py`, `check_modified.py`, `create_graderdata.py`) |
-| `templates/` | Jinja2 templates (login, main, review, config_graders) with shared partials |
-| `static/` | CSS, JavaScript, and assets |
-| `tests/` | Pytest contract tests |
+| `templates/` | Jinja2 templates (login, main, review, config_graders, studio) with shared partials |
+| `static/` | CSS, JavaScript, and assets (incl. `js/studio/`, `js/arena/`, `js/dataset/`, `js/calibrate/`) |
+| `tests/` | Pytest contract tests (incl. `test_pref_*.py`) |
 
 ---
 
@@ -344,6 +375,7 @@ LangSmith/LangChain tracing is available on the orchestrating iterative loop and
 - [Implementation](./docs/IMPLEMENTATION.md) — route contracts, JSON schemas, layer behavior
 - [Refactoring Notes](./docs/REFACTORING.md) — maintenance guidance and implementation notes
 - [User Guide](./docs/user%20guide.md) — end-user walkthrough
+- [Preference Studio](./docs/preference_studio.md) — judging, calibration, training targets, and export formats
 
 ---
 

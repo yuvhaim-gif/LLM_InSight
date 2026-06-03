@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% include 'partials/_head_common.html' %}
+    <title>LLM🔍InSights - Preference Studio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/arena.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dataset.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/studio.css') }}">
+</head>
+<body>
+<div class="container studio-container">
+    <div style="margin-bottom: 20px;">
+        <a href="/" class="back-button" style="position: fixed; top: 20px; left: 20px; z-index: 1000;">← Back to Main 🎯</a>
+    </div>
+    {% with badge_size=140, badge_font_size='1.8rem', badge_extra_style='position: fixed; top: 20px; right: 20px; z-index: 1000;' %}
+    {% include 'partials/_logo_badge.html' %}
+    {% endwith %}
+
+    <div class="header">
+        <h1>🎛️ Preference Studio</h1>
+        <p>Judge answer pairs to calibrate the grader, then build &amp; export training sets — all in one place</p>
+    </div>
+
+    <div class="studio-topbar">
+        <div class="studio-tabs">
+            <button type="button" class="studio-tab" data-tab="arena">🥊 Judge<span class="info-icon" tabindex="0" role="img" aria-label="Compare answer pairs and vote — this calibrates the grader to your taste." data-tooltip="Compare answer pairs and vote — this calibrates the grader to your taste.">i</span></button>
+            <button type="button" class="studio-tab" data-tab="dataset">📦 Build &amp; Export<span class="info-icon" tabindex="0" role="img" aria-label="Turn your judgments + machine grades into training-ready datasets and export them." data-tooltip="Turn your judgments + machine grades into training-ready datasets and export them.">i</span></button>
+        </div>
+        <div class="studio-topbar-right">
+            <a href="/config_graders" class="studio-link">⚙️ Config Graders</a><span class="info-icon" tabindex="0" role="img" aria-label="Step 3 of the loop lives here: the Calibration panel shows how closely the grader matches your votes, and lets you re-fit weights or re-grade." data-tooltip="Step 3 of the loop lives here: the Calibration panel shows how closely the grader matches your votes, and lets you re-fit weights or re-grade.">i</span>
+        </div>
+    </div>
+
+    <div class="studio-flow">
+        <span class="studio-flow-title">How it works<span class="info-icon" tabindex="0" role="img" aria-label="The Preference Studio loop: judge pairs to teach the grader your taste, anchor the answers you trust, calibrate the grader on Config Graders, then build and export training data. Repeat until the grader agrees with you." data-tooltip="The Preference Studio loop: judge pairs to teach the grader your taste, anchor the answers you trust, calibrate the grader on Config Graders, then build and export training data. Repeat until the grader agrees with you.">i</span></span>
+        <ol class="studio-flow-steps">
+            <li><span class="flow-step">1 · Judge</span> pick a source on the left, <strong>Scan</strong>, and vote which answer is better — Tie or Both bad if neither wins.</li>
+            <li><span class="flow-step">2 · Anchor</span> pin <strong>★ Ground truth</strong> on verdicts you trust, or <strong>✍️ Refine</strong> to write a gold answer.</li>
+            <li><span class="flow-step">3 · Calibrate</span> open <strong>⚙️ Config Graders</strong> to see how well the grader matches your votes, then re-fit weights or re-grade.</li>
+            <li><span class="flow-step">4 · Build &amp; Export</span> switch to the <strong>Build &amp; Export</strong> tab to assemble pools and download training-ready JSONL.</li>
+        </ol>
+    </div>
+
+    <div class="studio-body">
+        <aside class="studio-rail">
+            <div class="rail-box">
+                <div class="rail-title">Sources<span class="info-icon" tabindex="0" role="img" aria-label="Tick a source to include it in dataset builds; click a source name (or 🥊 Grade) to judge that chat. Live ledger is the current session." data-tooltip="Tick a source to include it in dataset builds; click a source name (or 🥊 Grade) to judge that chat. Live ledger is the current session.">i</span></div>
+                <div class="rail-hint">☑️ feeds the dataset · 🥊 grade in Judge tab</div>
+                <div id="source-manager"></div>
+            </div>
+            <div class="rail-box" id="rail-progress">
+                <div class="rail-title">Queue<span class="info-icon" tabindex="0" role="img" aria-label="How many pairs are queued and how many you have annotated this session." data-tooltip="How many pairs are queued and how many you have annotated this session.">i</span></div>
+                <div id="progress">No queue yet — pick a source and Scan.</div>
+            </div>
+            <div class="rail-box">
+                <div class="rail-title">Fitness<span class="info-icon" tabindex="0" role="img" aria-label="Agreement between the grader and your votes (accuracy + Cohen's κ). Refit weights on Config Graders." data-tooltip="Agreement between the grader and your votes (accuracy + Cohen's κ). Refit weights on Config Graders.">i</span></div>
+                <div id="fitness">—</div>
+            </div>
+        </aside>
+
+        <main class="studio-main">
+            <!-- ============ JUDGE (ARENA) ============ -->
+            <section class="studio-panel" data-panel="arena">
+                <div class="studio-controls">
+                    <div class="field">
+                        <label for="mode">Pairing<span class="info-icon" tabindex="0" role="img" aria-label="Pairing: same-iteration (original vs improved), cross-iteration (best vs rest), or both." data-tooltip="Pairing: same-iteration (original vs improved), cross-iteration (best vs rest), or both.">i</span></label>
+                        <select id="mode">
+                            <option value="same_iter">Same iteration</option>
+                            <option value="cross_iter">Cross iteration</option>
+                            <option value="both">Both</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="blind">Blind<span class="info-icon" tabindex="0" role="img" aria-label="Hide model names and scores until you vote, to avoid bias." data-tooltip="Hide model names and scores until you vote, to avoid bias.">i</span></label>
+                        <input type="checkbox" id="blind" checked>
+                    </div>
+                    <button id="scan" class="arena-btn">Scan<span class="info-icon" tabindex="0" role="img" aria-label="Build the priority queue for the selected source — hardest/most-uncertain pairs first." data-tooltip="Build the priority queue for the selected source — hardest/most-uncertain pairs first.">i</span></button>
+                </div>
+
+                <div id="prompt" class="arena-prompt">Pick a source on the left and press Scan to begin.</div>
+                <div class="arena-cols">
+                    <div class="arena-card">
+                        <div class="arena-card-head">Answer A</div>
+                        <div id="left" class="arena-answer"></div>
+                        <div class="reveal" id="reveal-left" style="display:none;"></div>
+                        <div class="scalar">
+                            <label for="left_human">Your grade A<span class="info-icon" tabindex="0" role="img" aria-label="Optional: your own 1–100 grade for this side. Skip if you only want the ordering." data-tooltip="Optional: your own 1–100 grade for this side. Skip if you only want the ordering.">i</span></label>
+                            <input type="number" id="left_human" min="1" max="100" step="1" placeholder="skip">
+                        </div>
+                    </div>
+                    <div class="arena-card">
+                        <div class="arena-card-head">Answer B</div>
+                        <div id="right" class="arena-answer"></div>
+                        <div class="reveal" id="reveal-right" style="display:none;"></div>
+                        <div class="scalar">
+                            <label for="right_human">Your grade B<span class="info-icon" tabindex="0" role="img" aria-label="Optional: your own 1–100 grade for this side. Skip if you only want the ordering." data-tooltip="Optional: your own 1–100 grade for this side. Skip if you only want the ordering.">i</span></label>
+                            <input type="number" id="right_human" min="1" max="100" step="1" placeholder="skip">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="arena-votes">
+                    <button class="vote-btn" data-verdict="left">◀ A better<span class="info-icon" tabindex="0" role="img" aria-label="Pick the answer that better satisfies the task — ordering matters, not the number." data-tooltip="Pick the answer that better satisfies the task — ordering matters, not the number.">i</span></button>
+                    <button class="vote-btn" data-verdict="tie">Tie<span class="info-icon" tabindex="0" role="img" aria-label="Both answers are about equally good." data-tooltip="Both answers are about equally good.">i</span></button>
+                    <button class="vote-btn" data-verdict="right">B better ▶<span class="info-icon" tabindex="0" role="img" aria-label="Pick the answer that better satisfies the task — ordering matters, not the number." data-tooltip="Pick the answer that better satisfies the task — ordering matters, not the number.">i</span></button>
+                    <button class="vote-btn warn" data-verdict="both_bad">Both bad<span class="info-icon" tabindex="0" role="img" aria-label="Neither is acceptable — opens Refine to write a gold answer." data-tooltip="Neither is acceptable — opens Refine to write a gold answer.">i</span></button>
+                    <button class="vote-btn" id="ground-truth">★ Ground truth<span class="info-icon" tabindex="0" role="img" aria-label="Pin this judgment as high-trust ground truth (used for eval + training)." data-tooltip="Pin this judgment as high-trust ground truth (used for eval + training).">i</span></button>
+                </div>
+                <div class="studio-hotkeys">Keys: ◀ A · ▶ B · ↓ Tie · b Both bad · g Ground truth · r Refine</div>
+                <div id="last-reveal" class="last-reveal"></div>
+            </section>
+
+            <!-- ============ BUILD & EXPORT (DATASET) ============ -->
+            <section class="studio-panel" data-panel="dataset">
+                <div class="studio-controls">
+                    <div class="field">
+                        <label for="target">Training target<span class="info-icon" tabindex="0" role="img" aria-label="Production model (the model under test) or a Pass/Fail judge (a trainable Layer-3 grader)." data-tooltip="Production model (the model under test) or a Pass/Fail judge (a trainable Layer-3 grader).">i</span></label>
+                        <select id="target">
+                            <option value="production">Production model</option>
+                            <option value="judge">Pass/Fail judge</option>
+                        </select>
+                    </div>
+                    <button id="rebuild" class="ds-btn">Rebuild<span class="info-icon" tabindex="0" role="img" aria-label="Reassemble the pools from exactly the ticked sources." data-tooltip="Reassemble the pools from exactly the ticked sources.">i</span></button>
+                    <div id="counts" class="ds-counts">—</div>
+                </div>
+
+                <div class="ds-filters">
+                    <div class="filter-row">
+                        <label for="f-band">Band<span class="info-icon" tabindex="0" role="img" aria-label="Filter rows by quality band: GOLD (human), AUTO+ (confident machine), REVIEW (uncertain)." data-tooltip="Filter rows by quality band: GOLD (human), AUTO+ (confident machine), REVIEW (uncertain).">i</span></label>
+                        <select id="f-band">
+                            <option value="">All</option>
+                            <option value="GOLD">GOLD</option>
+                            <option value="AUTO+">AUTO+</option>
+                            <option value="REVIEW">REVIEW</option>
+                        </select>
+                    </div>
+                    <div class="filter-row">
+                        <label for="f-minconf">Min conf <span id="f-minconf-val">0</span><span class="info-icon" tabindex="0" role="img" aria-label="Hide rows below this confidence." data-tooltip="Hide rows below this confidence.">i</span></label>
+                        <input type="range" id="f-minconf" min="0" max="1" step="0.01" value="0">
+                    </div>
+                    <div class="filter-row judge-only" style="display:none;">
+                        <label for="f-label">PASS/FAIL<span class="info-icon" tabindex="0" role="img" aria-label="Show only PASS or only FAIL judge examples." data-tooltip="Show only PASS or only FAIL judge examples.">i</span></label>
+                        <select id="f-label">
+                            <option value="">All</option>
+                            <option value="pass">PASS</option>
+                            <option value="fail">FAIL</option>
+                        </select>
+                    </div>
+                    <div class="filter-row">
+                        <label for="f-cap">Per-prompt cap<span class="info-icon" tabindex="0" role="img" aria-label="Limit how many rows are kept per prompt to avoid skew." data-tooltip="Limit how many rows are kept per prompt to avoid skew.">i</span></label>
+                        <input type="number" id="f-cap" min="0" step="1" value="0" placeholder="0 = no cap">
+                    </div>
+                    <div class="filter-row judge-only" style="display:none;">
+                        <label for="f-balance">Class cap<span class="info-icon" tabindex="0" role="img" aria-label="Cap the majority class so PASS/FAIL stay balanced." data-tooltip="Cap the majority class so PASS/FAIL stay balanced.">i</span></label>
+                        <input type="number" id="f-balance" min="0" step="1" value="0" placeholder="0 = off">
+                    </div>
+                    <button id="send-review" class="ds-btn ghost">Send REVIEW → Judge<span class="info-icon" tabindex="0" role="img" aria-label="Re-queue uncertain REVIEW pairs into the Judge tab for human decisions." data-tooltip="Re-queue uncertain REVIEW pairs into the Judge tab for human decisions.">i</span></button>
+                </div>
+
+                <div class="ds-main" id="table-area"></div>
+
+                <div class="ds-export">
+                    <h3>Export<span class="info-icon" tabindex="0" role="img" aria-label="Preview then download a training JSONL + sidecar + dataset card to the isolated export folder." data-tooltip="Preview then download a training JSONL + sidecar + dataset card to the isolated export folder.">i</span></h3>
+                    <div class="export-row">
+                        <div class="field">
+                            <label for="ex-format">Format<span class="info-icon" tabindex="0" role="img" aria-label="The training shape — drives which trainer the JSONL loads into." data-tooltip="The training shape — drives which trainer the JSONL loads into.">i</span></label>
+                            <select id="ex-format"></select>
+                        </div>
+                        <div class="field">
+                            <label for="ex-conv">Conversational<span class="info-icon" tabindex="0" role="img" aria-label="Standard text columns vs. message lists ([{role,content}…])." data-tooltip="Standard text columns vs. message lists ([{role,content}…]).">i</span></label>
+                            <input type="checkbox" id="ex-conv">
+                        </div>
+                        <div class="field pools-only">
+                            <label for="ex-pools">Pools<span class="info-icon" tabindex="0" role="img" aria-label="Which pools to include for pairwise export (gold/auto/review)." data-tooltip="Which pools to include for pairwise export (gold/auto/review).">i</span></label>
+                            <select id="ex-pools" multiple size="3">
+                                <option value="gold" selected>gold</option>
+                                <option value="auto" selected>auto</option>
+                                <option value="review">review</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="ex-minconf">Min conf<span class="info-icon" tabindex="0" role="img" aria-label="Drop exported rows below this confidence." data-tooltip="Drop exported rows below this confidence.">i</span></label>
+                            <input type="number" id="ex-minconf" min="0" max="1" step="0.01" value="0">
+                        </div>
+                        <div class="field">
+                            <label for="ex-split">Test split<span class="info-icon" tabindex="0" role="img" aria-label="Fraction held out as a test split (deterministic by pair id)." data-tooltip="Fraction held out as a test split (deterministic by pair id).">i</span></label>
+                            <input type="number" id="ex-split" min="0" max="0.9" step="0.05" value="0.1">
+                        </div>
+                        <button id="ex-preview" class="ds-btn">Preview<span class="info-icon" tabindex="0" role="img" aria-label="Show the first rows exactly as they will be written." data-tooltip="Show the first rows exactly as they will be written.">i</span></button>
+                        <button id="ex-download" class="ds-btn">Download<span class="info-icon" tabindex="0" role="img" aria-label="Write the training JSONL + sidecar + card to the isolated export dir and download." data-tooltip="Write the training JSONL + sidecar + card to the isolated export dir and download.">i</span></button>
+                    </div>
+                    <pre id="ex-preview-out" class="export-preview"></pre>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<div class="modal-overlay" id="refineModal">
+    <div class="modal-box">
+        <h3>✍️ Refine — write a gold answer</h3>
+        <div id="refine-prompt" class="refine-prompt"></div>
+        <label for="gold">Gold answer<span class="info-icon" tabindex="0" role="img" aria-label="Write the correct answer to this prompt; it becomes a curated PASS example." data-tooltip="Write the correct answer to this prompt; it becomes a curated PASS example.">i</span></label>
+        <textarea id="gold" rows="6" placeholder="Write the correct answer…"></textarea>
+        <label class="refine-check">
+            <input type="checkbox" id="blacklist_losers">
+            Blacklist both shown<span class="info-icon" tabindex="0" role="img" aria-label="Mark both displayed answers as never-good (universal rejected/FAIL)." data-tooltip="Mark both displayed answers as never-good (universal rejected/FAIL).">i</span>
+        </label>
+        <div class="modal-btns">
+            <button id="refine-save" class="arena-btn">Save<span class="info-icon" tabindex="0" role="img" aria-label="Save the gold answer as a curated PASS example (and blacklist the shown answers if checked)." data-tooltip="Save the gold answer as a curated PASS example (and blacklist the shown answers if checked).">i</span></button>
+            <button id="refine-cancel" class="arena-btn ghost">Cancel</button>
+        </div>
+    </div>
+</div>
+
+{% include 'partials/_footer.html' %}
+
+<script>window.__STUDIO_TAB__ = {{ initial_tab|tojson }};</script>
+<script type="module" src="{{ url_for('static', filename='js/studio/init.js') }}"></script>
+</body>
+</html>

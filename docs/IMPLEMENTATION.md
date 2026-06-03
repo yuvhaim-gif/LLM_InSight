@@ -85,6 +85,35 @@ Route contracts, runtime behavior, JSON schemas, configuration, and frontend int
 | `POST /delete_chat_file` | Delete a backup file from `backup/` |
 | `POST /upload_chat_json` | Upload and restore a JSON backup |
 
+### Preference Studio (`preference/routes.py`, `pref_bp`)
+
+Pages redirect to `/login` when unauthenticated; every `/api/...` endpoint returns JSON `401`
+(`{ "error": "auth" }`) via `check_auth()`.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET /arena` | Render `studio.html` on the **Judge** tab |
+| `GET /dataset` | Render `studio.html` on the **Build & Export** tab |
+| `GET /api/arena/sources` | List the live ledger availability + allowed backup sources |
+| `GET /api/arena/source/meta` | Backup metadata (grader setting, weights, prompt/ledger counts) |
+| `GET /api/arena/source/analyze` | Analyze a backup (prompt count, grader name, first prompt) |
+| `POST /api/arena/source/forget` | Non-destructively remove a backup from the user's review manifest |
+| `POST /api/arena/source/restore` | Re-add a backup to the manifest |
+| `POST /api/arena/scan` | Extract + score pairs for the selected source and rebuild the queue |
+| `GET /api/arena/next` | Return the next queued pair (blinded view) or `{ done: true }` |
+| `POST /api/arena/vote` | Record a verdict (+ optional scalar grades), return the next pair |
+| `POST /api/arena/refine` | Save a gold answer; optionally blacklist both shown answers |
+| `POST /api/arena/role` | Set a pair's role (e.g. pin/unpin ground truth) |
+| `GET /api/calibrate/report` | Live fitness report (pairwise acc, Cohen's κ, Spearman, per-attribute) |
+| `POST /api/calibrate/refit` | Suggest weights that best reproduce votes (no model calls); logs a run |
+| `POST /api/calibrate/regrade` | Tier-B full re-grade with a candidate config (calls models); logs a run |
+| `GET /api/calibrate/history` | List past calibration runs |
+| `GET /api/dataset/build` | Build curated pairwise pools (gold/auto/review) from the ticked sources |
+| `GET /api/dataset/examples` | Build per-answer PASS/FAIL examples from the ticked sources |
+| `POST /api/dataset/send_to_arena` | Re-queue selected REVIEW pairs into the Judge tab |
+| `GET /api/dataset/export` | Write the training files and stream the train JSONL as a download |
+| `GET /api/dataset/export/preview` | Return the first `n` rows exactly as they will be written |
+
 ## Auth Behavior
 
 | Endpoint group | Guard | Unauthenticated result |
@@ -223,6 +252,17 @@ Startup behavior: missing required variables print an error and `sys.exit(1)`. M
 | `STATE_DB_PATH` | `data/runtime_state.db` | SQLite per-session state |
 | `BACKUP_DIR` | `backup/` | Timestamped backup copies |
 | `GRADERDATA_DIR` | `graderdata/` | Grader setting JSONL files |
+| `PREFERENCES_DB` | `data/preferences.db` | Preference Studio SQLite (judgments, queue, blacklist, calibration runs) |
+| `PREFERENCE_EXPORT_DIR` | `data/preferences_export/` | Exported training datasets (auto-created on first export) |
+| `PREFERENCE_REGRADE_DIR` | `data/preferences_regrade/` | Tier-B re-grade artifacts |
+
+Preference Studio also adds tuning constants in `config/settings.py`: `ARENA_QUEUE_WEIGHTS`,
+`ARENA_CROSS_MAX_PER_PROMPT`, `ARENA_CROSS_MIN_GAP`, `ARENA_PASS_THRESHOLDS`,
+`DATASET_AUTO_MIN_MARGIN`, `DATASET_AUTO_MIN_CONF`, `DATASET_MAX_PER_PROMPT`,
+`DATASET_TEST_SPLIT`, `DATASET_GROUNDTRUTH_MIN`, `DATASET_DEFAULT_FORMAT`,
+`DATASET_EXPORT_CONVERSATIONAL`, `JUDGE_PASS_GRADE`, `JUDGE_FAIL_GRADE`,
+`JUDGE_GEN_INSTRUCTION`, `JUDGE_CLS_TEMPLATE`. See [preference_studio.md](./preference_studio.md)
+for their meanings and the export-format contracts.
 
 ### Dependencies (`requirements.txt`)
 
@@ -498,4 +538,5 @@ CSS load order: `shared.css` (via `_head_common.html`) → page-specific CSS. Th
 - [README.md](../README.md)
 - [ARCHITECTURE.md](./ARCHITECTURE.md)
 - [REFACTORING.md](./REFACTORING.md)
+- [preference_studio.md](./preference_studio.md)
 - [user guide.md](./user%20guide.md)
