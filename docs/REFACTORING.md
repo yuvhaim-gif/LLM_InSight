@@ -4,7 +4,7 @@ Guidance for maintaining and evolving the tool without breaking existing behavio
 
 ## Stable Contracts
 
-- Route URLs and payload shapes used by frontend JS modules (`static/js/main/`, `static/js/review/`, `static/js/shared/`, `config_graders.js`).
+- Route URLs and payload shapes used by frontend JS modules (`static/js/main/`, `static/js/review/`, `static/js/shared/`, `config_graders.js`, and the Preference Studio modules `static/js/studio/`, `static/js/arena/`, `static/js/dataset/`, `static/js/calibrate/`).
 - Session key names centralized in `utils/session_keys.py` (constants prefixed `SK_`). All backend files use these constants instead of raw strings. The actual string values are the stable contract for frontend handoff.
 - Runtime file names and paths: `data/ledger.jsonl`, `data/iteration_history.json`, `data/best_best_layer1.json`, `data/console_output.txt`, `data/runtime_state.db`.
 - Backup payload version `2.0` and key layout (including `grader_setting_name` in `session_data`).
@@ -66,7 +66,7 @@ Guidance for maintaining and evolving the tool without breaking existing behavio
 1. Keep endpoint signatures stable.
 2. Frontend scripts are split into `shared/`, `main/`, and `review/` modules. The Deeper Analysis modal is unified in `shared/deeper-analysis.js`. All functions remain at global scope for inline handler compatibility.
 3. Shared CSS is extracted to `static/css/shared.css`. Repeated HTML fragments are extracted to Jinja2 partials in `templates/partials/`. Page-specific CSS files retain only override rules.
-4. 102 contract tests in `tests/` cover backup schema (11), restore behavior (15), advanced map compatibility (8), auth matrix (40), and provider routing (28). Uses `pytest` with monkeypatched temp directories and in-memory DB. Dev dependency in `requirements-dev.txt`.
+4. 181 contract tests in `tests/` cover backup schema (11), restore behavior (15), advanced map compatibility (8), auth matrix (44), and provider routing (24) — 102 core tests — plus 79 Preference Studio tests (`test_pref_*`: store, extract, active-learning, calibrate, dataset, examples, export, routes, sources, wiring). Uses `pytest` with monkeypatched temp directories and in-memory DB. Dev dependency in `requirements-dev.txt`.
 5. Internal optimizations: incremental token usage merging via `_merge_token_usage`, thread-local session ID cache in `core/state.py`, module-level `ERROR_PREFIXES` constant and pre-compiled regex patterns. Summary/display logic extracted to `ai/iteration_summary.py`. Provider post-thread result handling consolidated in `_handle_thread_result` helper in `ai/api_calls.py`.
 6. Backend hardening: Ollama unavailability returns `[OLLAMA_ERROR]` prefix; `create_failed_grade_entry` accepts `score_weights` for correct scoring with custom grader keys; `backup_chat_json` guards session access with `has_request_context()`; `_merge_token_usage` covers all 6 layers including Layer 3's nested per-category structure; `get_layer3_grader_models()` falls back to session-stored graders when the named setting file is missing on disk.
 

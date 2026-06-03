@@ -281,7 +281,7 @@ for their meanings and the export-format contracts.
 
 | Package | Purpose |
 |---|---|
-| `pytest` | Contract test suite (102 tests: backup schema, restore, advanced maps, auth matrix, provider routing) |
+| `pytest` | Contract test suite (181 tests: backup schema, restore, advanced maps, auth matrix, provider routing, plus the full Preference Studio package via `test_pref_*`) |
 
 ### Grader Settings (`graderdata/*.jsonl`)
 
