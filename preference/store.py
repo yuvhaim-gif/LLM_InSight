@@ -69,6 +69,14 @@ CREATE TABLE IF NOT EXISTS calibration_runs (
     suggested_weights TEXT,
     created_at     TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS grading_selection (
+    annotator   TEXT NOT NULL,
+    source_key  TEXT NOT NULL,
+    version_id  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL,
+    PRIMARY KEY (annotator, source_key)
+);
 """
 
 
@@ -282,5 +290,32 @@ def list_calibration_runs(annotator, limit=20):
             return [dict(r) for r in c.execute(
                 "SELECT * FROM calibration_runs WHERE annotator=? ORDER BY created_at DESC LIMIT ?",
                 (annotator, limit))]
+        finally:
+            c.close()
+
+
+# ---- grading selection (per-chat active grading version) ----
+def get_grading_selection(annotator, source_key):
+    with _pref_lock:
+        c = _conn()
+        try:
+            row = c.execute("SELECT version_id FROM grading_selection WHERE annotator=? AND source_key=?",
+                            (annotator, source_key)).fetchone()
+            return row["version_id"] if row else None
+        finally:
+            c.close()
+
+
+def set_grading_selection(annotator, source_key, version_id):
+    with _pref_lock:
+        c = _conn()
+        now = utc_now_iso()
+        try:
+            c.execute("""INSERT INTO grading_selection(annotator,source_key,version_id,updated_at)
+              VALUES (?,?,?,?)
+              ON CONFLICT(annotator,source_key) DO UPDATE SET
+                version_id=excluded.version_id, updated_at=excluded.updated_at""",
+                      (annotator, source_key, version_id, now))
+            c.commit()
         finally:
             c.close()

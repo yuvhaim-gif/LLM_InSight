@@ -13,7 +13,7 @@ How the tool is structured — components, data flow, and persistence. It enable
 | API routes | `routes/api_routes.py` | Auth, model/weight/toggle updates, grader settings CRUD, progress, backup |
 | Review routes | `routes/review_routes.py` | Saved-chat browsing, load, delete, upload, backup analysis |
 | Blueprint registration | `routes/__init__.py` | Registers `api_bp`, `main_bp`, and the Preference Studio `pref_bp` |
-| Preference Studio | `preference/` (`store.py`, `extract.py`, `active_learning.py`, `calibrate.py`, `dataset.py`, `export.py`, `routes.py`) | Isolated human-in-the-loop layer: pairwise judging, grader calibration metrics/re-fit/re-grade, curated pool building, and training-set export. Calls existing grading logic; never mutates the live ledger. State lives in its own SQLite DB and export/regrade dirs. Routes `/arena` and `/dataset` render the unified `studio.html`. See [preference_studio.md](./preference_studio.md) |
+| Preference Studio | `preference/` (`store.py`, `extract.py`, `active_learning.py`, `calibrate.py`, `conflicts.py`, `dataset.py`, `export.py`, `routes.py`) | Isolated human-in-the-loop layer: pairwise judging, grader calibration metrics/re-fit/re-grade, per-chat conflicts reporting across grading versions, curated pool building, and training-set export. Calls existing grading logic; never mutates the live ledger. State lives in its own SQLite DB and export/regrade dirs. Routes `/arena` and `/dataset` render the unified `studio.html`. See [preference_studio.md](./preference_studio.md) |
 | Loop orchestrator | `ai/iterative_loop.py` | Runs the full iteration pipeline per prompt. Token usage accumulated incrementally via `_merge_token_usage` across all 6 layers (layer0, layer1a, layer1b, layer2, layer3a, layer3b), including Layer 3's nested per-category structure (no post-loop scan). Session ID cached in thread-local at loop entry. Summary display and tie resolution delegated to `ai/iteration_summary.py` |
 | Iteration summary | `ai/iteration_summary.py` | Extracted presentation logic: `resolve_ties_and_save` (tie deduplication + final cache save), `print_model_usage_summary` (per-iteration model usage), `print_final_summary` (best-best/tie/fallback display). Called by the loop orchestrator at the end of each prompt run |
 | Layer 0 | `ai/layer0.py` | Brainstorming ideas (optional, runs once before loop) |
@@ -132,6 +132,9 @@ the loop between human judgment and the automated grader:
 - **Build & Export tab** — assemble curated pools from the ticked sources, filter by band/
   confidence, and export training-ready JSONL (+ provenance sidecar + dataset card) for a
   production model or a trainable pass/fail judge.
+- **Conflicts Report** (⚠️ Report on each source row) — a per-chat reconciliation of your decisive
+  judgments against the grader's picks, with a grading-version selector (Original vs. re-grade
+  runs, newest auto-selected) whose choice is persisted per chat.
 
 All Preference Studio state is isolated (own SQLite DB + export/regrade dirs) and never touched by
 the app's clear/backup of the live session. Full detail in [preference_studio.md](./preference_studio.md).
@@ -176,7 +179,7 @@ the app's clear/backup of the live session. Full detail in [preference_studio.md
 | `data/runtime_state.db` | SQLite database storing per-session runtime state (iteration counter, processing flag, models executed). Auto-created on first startup, cleaned up on exit |
 | `backup/` | Timestamped copies created on lifecycle events |
 | `graderdata/` | JSONL grader setting files (key, rubric, grader, weight per line) |
-| `data/preferences.db` | Preference Studio SQLite DB: judgments, queue, blacklist, calibration runs. Auto-created on first use; isolated from the live session |
+| `data/preferences.db` | Preference Studio SQLite DB: judgments, queue, blacklist, calibration runs, per-chat grading-version selections. Auto-created on first use; isolated from the live session |
 | `data/preferences_export/` | Exported training datasets (JSONL + `*.meta.jsonl` sidecar + `*.card.json`), written atomically |
 | `data/preferences_regrade/` | Tier-B re-grade artifacts (never the live ledger) |
 
@@ -215,7 +218,7 @@ LangSmith/LangChain tracing enabled via environment variables in `config/setting
 | `data/` | Runtime working files (ledger, cache, history, console output, state DB) |
 | `graderdata/` | JSONL grader setting files |
 | `routes/` | `web_routes.py`, `api_routes.py`, `review_routes.py`, `__init__.py` |
-| `preference/` | `store.py`, `extract.py`, `active_learning.py`, `calibrate.py`, `dataset.py`, `export.py`, `routes.py`, `__init__.py` (Preference Studio) |
+| `preference/` | `store.py`, `extract.py`, `active_learning.py`, `calibrate.py`, `conflicts.py`, `dataset.py`, `export.py`, `routes.py`, `__init__.py` (Preference Studio) |
 | `ai/` | `iterative_loop.py`, `iteration_summary.py`, `layer0.py`, `layer1.py`, `layer2.py`, `layer3.py`, `api_calls.py` |
 | `utils/` | `session.py`, `session_keys.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py` |
 | `scripts/` | Developer utility scripts (`check_syntax.py`, `check_modified.py`, `create_graderdata.py`) |
@@ -225,7 +228,7 @@ LangSmith/LangChain tracing enabled via environment variables in `config/setting
 | `static/js/main/` | `init.js`, `weights.js`, `filters.js`, `toggles.js`, `models.js`, `grader-settings.js`, `download.js`, `upload.js`, `processing.js`, `advanced.js` |
 | `static/js/review/` | `init.js`, `state.js`, `chat-list.js`, `prompt-view.js`, `prompt-chart.js`, `modals.js` |
 | `static/js/studio/` | `init.js` (page orchestrator; reuses the `arena/`, `dataset/`, `calibrate/` logic modules) |
-| `static/js/arena/` | `state.js`, `api.js`, `arena.js`, `refine.js` (judging logic) |
+| `static/js/arena/` | `state.js`, `api.js`, `arena.js`, `refine.js`, `conflicts.js` (judging logic + Conflicts Report) |
 | `static/js/dataset/` | `table.js`, `export.js` (build/export logic) |
 | `static/js/calibrate/` | `panel.js` (Calibration panel on Config Graders) |
 | `static/js/` | `config_graders.js` |

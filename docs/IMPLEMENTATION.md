@@ -104,6 +104,9 @@ Pages redirect to `/login` when unauthenticated; every `/api/...` endpoint retur
 | `POST /api/arena/vote` | Record a verdict (+ optional scalar grades), return the next pair |
 | `POST /api/arena/refine` | Save a gold answer; optionally blacklist both shown answers |
 | `POST /api/arena/role` | Set a pair's role (e.g. pin/unpin ground truth) |
+| `GET /api/arena/source/conflicts` | Conflicts Report for a chat: conflict rows + summary under the active grading version, plus available versions |
+| `POST /api/arena/source/grading_selection` | Persist the chosen grading version for a chat (per-user, per-chat) |
+| `GET /api/arena/judgments` | Per-pair user-pick vs grader-pick map across judged chats (cross-page conflict indicators) |
 | `GET /api/calibrate/report` | Live fitness report (pairwise acc, Cohen's κ, Spearman, per-attribute) |
 | `POST /api/calibrate/refit` | Suggest weights that best reproduce votes (no model calls); logs a run |
 | `POST /api/calibrate/regrade` | Tier-B full re-grade with a candidate config (calls models); logs a run |
@@ -252,7 +255,7 @@ Startup behavior: missing required variables print an error and `sys.exit(1)`. M
 | `STATE_DB_PATH` | `data/runtime_state.db` | SQLite per-session state |
 | `BACKUP_DIR` | `backup/` | Timestamped backup copies |
 | `GRADERDATA_DIR` | `graderdata/` | Grader setting JSONL files |
-| `PREFERENCES_DB` | `data/preferences.db` | Preference Studio SQLite (judgments, queue, blacklist, calibration runs) |
+| `PREFERENCES_DB` | `data/preferences.db` | Preference Studio SQLite (judgments, queue, blacklist, calibration runs, per-chat grading-version selections) |
 | `PREFERENCE_EXPORT_DIR` | `data/preferences_export/` | Exported training datasets (auto-created on first export) |
 | `PREFERENCE_REGRADE_DIR` | `data/preferences_regrade/` | Tier-B re-grade artifacts |
 

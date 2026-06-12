@@ -178,7 +178,7 @@ function closeDeeperAnalysisModal() {
     }
 }
 
-function openDeeperAnalysis(promptNumber, iterations, graderSettingName, savedWeights) {
+function openDeeperAnalysis(promptNumber, iterations, graderSettingName, savedWeights, judgmentCtx) {
     console.log('openDeeperAnalysis called with:', promptNumber, iterations);
     try {
         if (!iterations || iterations.length === 0) {
@@ -226,6 +226,9 @@ function openDeeperAnalysis(promptNumber, iterations, graderSettingName, savedWe
         html += '<span style="font-size: 0.85rem; font-weight: 700; color: #2d3436;">📋 Grader Setting:</span>';
         html += '<span style="font-size: 0.85rem; color: #6c5ce7; font-weight: 600;">' + activeGraderName + '</span>';
         html += '</div>';
+        if (judgmentCtx && judgmentCtx.bannerHtml) {
+            html += judgmentCtx.bannerHtml;
+        }
         html += '<div class="deeper-analysis-section">';
         html += '<h3>📊 Average Grade Analysis</h3>';
         html += renderDeeperAnalysisWeightControls(initialWeights);
@@ -284,6 +287,10 @@ function openDeeperAnalysis(promptNumber, iterations, graderSettingName, savedWe
         }
         
         body.innerHTML = html;
+
+        if (judgmentCtx && typeof judgmentCtx.onMount === 'function') {
+            try { judgmentCtx.onMount(body); } catch (e) { console.error('judgmentCtx.onMount failed', e); }
+        }
 
         const avgSection = body.querySelector('.deeper-analysis-section');
         if (avgSection && !body.querySelector('#deeperAnalysisWeightControls')) {

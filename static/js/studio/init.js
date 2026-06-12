@@ -2,6 +2,7 @@ import { S, esc } from "../arena/state.js";
 import { Api } from "../arena/api.js";
 import { Arena, refreshFitness } from "../arena/arena.js";
 import { Refine } from "../arena/refine.js";
+import { openConflictsReport, bindConflicts } from "../arena/conflicts.js";
 import { Table } from "../dataset/table.js";
 import { Export } from "../dataset/export.js";
 
@@ -42,11 +43,14 @@ function activeTab() {
 }
 
 /* ---------------- shared sources ---------------- */
-function srcRow(value, label, enabled, isLive, ephemeral) {
+function srcRow(value, label, enabled, isLive, ephemeral, fullPrompt, grader) {
   const checked = isLive && enabled ? "checked" : "";
   const chkDisabled = enabled ? "" : "disabled";
   const eph = ephemeral ? ` <em class="ephemeral">${esc(ephemeral)}</em>` : "";
-  const actions = [`<button class="mini" data-act="grade"${enabled ? "" : " disabled"}>🥊 Grade</button>`];
+  const graderTxt = grader ? ` · ${esc(grader)}` : "";
+  const title = fullPrompt ? esc(fullPrompt) : "Click to grade this chat in the Judge tab";
+  const actions = [`<button class="mini" data-act="grade"${enabled ? "" : " disabled"}>🥊 Grade</button>`,
+                   `<button class="mini" data-act="report">⚠️ Report</button>`];
   if (!isLive) {
     actions.push(`<button class="mini" data-act="analyze">Analyze</button>`);
     actions.push(`<button class="mini" data-act="forget">Forget</button>`);
@@ -55,7 +59,7 @@ function srcRow(value, label, enabled, isLive, ephemeral) {
     <div class="src-top">
       <input type="checkbox" class="src-chk" value="${esc(value)}" ${checked} ${chkDisabled}
              title="Include this source in dataset build &amp; export">
-      <span class="src-label" role="button" tabindex="0" title="Click to grade this chat in the Judge tab">${esc(label)}<span class="src-grader" data-file="${esc(value)}"></span>${eph}</span>
+      <span class="src-label" role="button" tabindex="0" title="${title}">${esc(label)}<span class="src-grader" data-file="${esc(value)}">${graderTxt}</span>${eph}</span>
     </div>
     <div class="src-actions">${actions.join("")}</div>
     <div class="src-detail"></div>
@@ -65,10 +69,14 @@ function srcRow(value, label, enabled, isLive, ephemeral) {
 async function loadSources() {
   const data = await Api.sources();
   BACKUPS = data.backups || [];
-  const liveOk = !!(data.live && data.live.available);
-  const rows = [srcRow("live", "📥 Live ledger", liveOk, true,
-    `ephemeral — current session only${liveOk ? "" : " (empty)"}`)];
-  BACKUPS.forEach((b) => rows.push(srcRow(b.file, "📁 " + b.label, true, false, "")));
+  const live = data.live || {};
+  const liveOk = !!live.available;
+  const liveLabel = live.prompt_preview ? "📥 " + live.prompt_preview : "📥 Live ledger";
+  const rows = [srcRow("live", liveLabel, liveOk, true,
+    `ephemeral — current session only${liveOk ? "" : " (empty)"}`, live.first_prompt || "", "")];
+  BACKUPS.forEach((b) =>
+    rows.push(srcRow(b.file, "📁 " + (b.prompt_preview || b.label), true, false, "",
+      b.first_prompt || b.label, b.grader_setting)));
   el("source-manager").innerHTML = rows.join("");
   bindSourceEvents();
 
@@ -83,7 +91,6 @@ async function loadSources() {
     S.source_ref = "live_ledger";
   }
   highlightSelected();
-  loadGraderLabels();
 }
 
 function bindSourceEvents() {
@@ -108,18 +115,6 @@ function bindSourceEvents() {
   });
 }
 
-async function loadGraderLabels() {
-  for (const b of BACKUPS) {
-    try {
-      const m = await Api.meta(b.file);
-      const span = document.querySelector(`#source-manager .src-grader[data-file="${cssEsc(b.file)}"]`);
-      if (span) span.textContent = " · " + (m.grader_setting || "");
-    } catch (e) {
-      /* ignore */
-    }
-  }
-}
-
 function highlightSelected() {
   const cur = S.source_kind === "live" ? "live" : S.source_ref;
   document.querySelectorAll("#source-manager .src-row").forEach((row) => {
@@ -138,6 +133,39 @@ function gradeSource(value) {
   doScan();
 }
 
+function arenaPromptSelectorHtml(list, idx) {
+  if (list.length <= 1) return "";
+  const opts = list
+    .map((p, i) => {
+      const preview = (p.prompt_text || "").replace(/\s+/g, " ").trim().slice(0, 60);
+      const label = "Prompt " + (p.prompt_number || i + 1) + (preview ? " · " + preview : "");
+      return `<option value="${i}"${i === idx ? " selected" : ""}>${esc(label)}</option>`;
+    })
+    .join("");
+  return `<div class="arena-deeper-prompt" style="margin-bottom:12px; padding:8px 14px; background:linear-gradient(135deg, rgba(9,132,227,0.10) 0%, rgba(9,132,227,0.16) 100%); border-radius:8px; border-left:4px solid #0984E3; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+    <span style="font-size:0.85rem; font-weight:700; color:#2d3436;">🧭 Prompt</span>
+    <select id="arenaDeeperPromptSelect" style="padding:5px 8px; border-radius:6px; border:1px solid #cdd5df; font-size:0.82rem; max-width:420px;">${opts}</select>
+  </div>`;
+}
+
+function openArenaDeeper(list, idx, grader, weights) {
+  if (typeof window.openDeeperAnalysis !== "function") return;
+  const p = list[idx];
+  const ctx = {
+    bannerHtml: arenaPromptSelectorHtml(list, idx),
+    onMount: (body) => {
+      const sel = body.querySelector("#arenaDeeperPromptSelect");
+      if (sel) {
+        sel.addEventListener("change", () => {
+          const next = parseInt(sel.value, 10) || 0;
+          openArenaDeeper(list, next, grader, weights);
+        });
+      }
+    },
+  };
+  window.openDeeperAnalysis(p.prompt_number || idx + 1, p.iterations || [], grader, weights, ctx);
+}
+
 async function onSrcAction(btn) {
   const row = btn.closest(".src-row");
   const file = row.getAttribute("data-value");
@@ -146,14 +174,26 @@ async function onSrcAction(btn) {
     gradeSource(file);
     return;
   }
+  if (act === "report") {
+    openConflictsReport(file === "live" ? "live" : file);
+    return;
+  }
   if (act === "analyze") {
     const d = row.querySelector(".src-detail");
-    d.textContent = "Analyzing…";
+    d.textContent = "Loading…";
     try {
       const m = await Api.analyze(file);
-      d.innerHTML = `<div>grader: <strong>${esc(m.grader_setting)}</strong></div>
-        <div>prompts: ${esc(m.prompts)}</div>
-        <div class="muted">${esc((m.first_prompt || "").slice(0, 120))}</div>`;
+      const prompts = m.prompts || {};
+      const list = Object.keys(prompts)
+        .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))
+        .map((k) => prompts[k])
+        .filter((p) => p && (p.iterations || []).length);
+      if (!list.length) {
+        d.textContent = "No analysis data.";
+        return;
+      }
+      d.textContent = "";
+      openArenaDeeper(list, 0, m.grader_setting || "default", m.weights || {});
     } catch (e) {
       d.textContent = "Analyze failed.";
     }
@@ -370,6 +410,7 @@ async function start() {
   bindTabs();
   bindArena();
   bindDataset();
+  bindConflicts();
   bindKeyboard();
   applyTargetUI();
   showTab(window.__STUDIO_TAB__ === "dataset" ? "dataset" : "arena");

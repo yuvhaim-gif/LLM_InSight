@@ -34,6 +34,7 @@ When you want the grader to match **your** judgment, **Preference Studio** close
 - **Session Review and Analysis** — Browse, load, and analyze past runs with per-prompt iteration stats, score grids, and an in-depth analysis modal featuring average grade bar charts, radar overlays, per-category score breakdowns, token usage charts, runtime comparisons, and adjustable weight sliders for live what-if recalculation.
 - **Preference Studio (Human-in-the-Loop)** — A unified `/arena` + `/dataset` page to judge answer pairs (which is better, a tie, or both bad), give your own 1–100 grades, pin ground truth, write gold answers, and blacklist bad answers. An active-learning queue surfaces the hardest / most-uncertain pairs first.
 - **Grader Calibration** — A calibration panel (on Config Graders) measures, live, how well the current grader reproduces your judgments (pairwise accuracy, Cohen's κ, Spearman, per-attribute alignment). Re-fit weights instantly (no model calls) or run a full re-grade with a candidate config, then apply and save.
+- **Conflicts Report** — A per-chat reconciliation (opened from each source row in Preference Studio) that lists exactly where your decisive judgments disagree with the grader's picks, with pairwise accuracy and Cohen's κ for the chat. A grading-version selector switches between the Original grading and later re-grade runs (newest auto-selected), and your chosen version is persisted per chat.
 - **Training-Dataset Export** — Build curated pools from exactly the sources you pick and export training-ready JSONL for a **production model** (`sft`, `preference`/DPO, `kto`) or a trainable **pass/fail judge** (`preference`/reward, `judge_cls`, `judge_gen`), each with a provenance sidecar and a summary card. All state is isolated from the live session.
 - **REST API** — All UI actions are backed by JSON endpoints — analysis (`/iteration`, `/is-processing`, `/get_backup_data`, `/update_weights`, `/save_advanced_models`, `/grader_settings`, `/grader_setting/<name>`) and Preference Studio (`/api/arena/*`, `/api/calibrate/*`, `/api/dataset/*`). Programmatic access to model selection, weight management, grader configuration, session backup, judging, calibration, and dataset export is available out of the box.
 
@@ -100,6 +101,12 @@ panel** (on Config Graders) and re-fit weights or re-grade → assemble curated 
   `preference` (DPO/reward, chosen vs rejected), `kto` (good + bad).
 - **Pass/Fail judge** — a trainable Layer-3 grader. Formats: `preference` (reward model),
   `judge_cls` (binary classifier), `judge_gen` (generative PASS/FAIL).
+
+Each source row in the shared rail also has a **⚠️ Report** button that opens the **Conflicts
+Report** for that chat — a per-chat view of every pair where your decisive pick differs from the
+grader's, with the chat's pairwise accuracy and Cohen's κ. A grading-version selector lets you
+compare the Original grading against later re-grade runs (newest auto-selected), and your choice is
+saved per chat.
 
 All Preference Studio state lives in an isolated `preferences.db` plus separate export/regrade
 directories; the live ledger is read-only here and never modified by re-grading.

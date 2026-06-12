@@ -153,7 +153,7 @@ def _regrade_one_answer(prompt_text, answer_text, cfg, max_retries=3):
     return {"grade": grade, "overall": compute_score(grade, cfg["weights"])}
 
 
-def regrade_calibration_set(votes, grader_setting_name):
+def regrade_calibration_set(votes, grader_setting_name, run_id=None):
     cfg = get_grader_config(grader_setting_name)
     by_hash, sources = {}, {}
     for v in votes:
@@ -164,11 +164,11 @@ def regrade_calibration_set(votes, grader_setting_name):
             by_hash[h] = _regrade_one_answer(v["prompt_text"], txt, cfg)
             sources[h] = {"source_kind": v["source_kind"], "source_ref": v["source_ref"],
                           "prompt_text": v["prompt_text"], "original_overall": v[f"{side}_overall"]}
-    _write_regrade_artifact(grader_setting_name, cfg, by_hash, sources)
+    _write_regrade_artifact(grader_setting_name, cfg, by_hash, sources, run_id)
     return by_hash
 
 
-def _write_regrade_artifact(name, cfg, by_hash, sources):
+def _write_regrade_artifact(name, cfg, by_hash, sources, run_id=None):
     os.makedirs(PREFERENCE_REGRADE_DIR, exist_ok=True)
     now = utc_now_iso()
     origins = {}
@@ -179,6 +179,8 @@ def _write_regrade_artifact(name, cfg, by_hash, sources):
         if s["prompt_text"] not in origins[key]["prompts"]:
             origins[key]["prompts"].append(s["prompt_text"])
     artifact = {
+        "run_id": run_id,
+        "answer_hashes": list(by_hash.keys()),
         "origins": list(origins.values()),
         "grader_setting": name, "weights": cfg["weights"], "keys": cfg["keys"],
         "created_at": now,

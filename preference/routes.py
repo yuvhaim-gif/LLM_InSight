@@ -6,7 +6,8 @@ import uuid
 from flask import request, session, jsonify, redirect, url_for, render_template, send_file
 
 from preference import pref_bp
-from preference import extract, active_learning, store, calibrate, dataset, export as rm_export
+from preference import (extract, active_learning, store, calibrate, dataset,
+                        export as rm_export, conflicts as pref_conflicts)
 from routes.api_routes import check_auth
 from routes.review_routes import (get_chat_files_from_backup, parse_chat_backup_filename,
                                   analyze_chat_backup)
@@ -34,8 +35,6 @@ def _allowed_backups():
     out = []
     for fn in get_chat_files_from_backup():
         _, ts = parse_chat_backup_filename(fn)
-        if ts != "Unknown time" and ts < "2025-11-26":
-            continue
         out.append({"file": fn, "label": ts if ts != "Unknown time" else fn})
     return out
 
@@ -47,6 +46,48 @@ def _backup_meta(fn):
             "weights": sd.get("current_weights"), "version": data.get("version", ""),
             "prompts": len(data.get("prompt_history", []) or []),
             "ledger_lines": len(data.get("ledger_entries", []) or [])}
+
+
+def _first_prompt_from_data(data):
+    for p in (data.get("prompt_history") or []):
+        if isinstance(p, str) and p.strip():
+            return p.strip()
+    entries = data.get("ledger_entries") or []
+    for e in entries:
+        if isinstance(e, dict) and e.get("grade_tag") == "original" and e.get("prompt"):
+            return str(e["prompt"]).strip()
+    for e in entries:
+        if isinstance(e, dict) and e.get("prompt"):
+            return str(e["prompt"]).strip()
+    return ""
+
+
+def _backup_first_prompt(fn):
+    return _first_prompt_from_data(load_json(os.path.join(DOWNLOADS_DIR, fn)) or {})
+
+
+def _live_first_prompt():
+    try:
+        entries, _ = extract.load_ledger("live", "live_ledger")
+    except Exception:
+        return ""
+    return extract._prompt_text(entries) or ""
+
+
+PROMPT_PREVIEW_CHARS = 70
+
+
+def _preview(text):
+    t = (text or "").strip().replace("\n", " ")
+    return t if len(t) <= PROMPT_PREVIEW_CHARS else (t[:PROMPT_PREVIEW_CHARS - 1].rstrip() + "…")
+
+
+def _votes_for_source(votes, source):
+    if source == "live":
+        kind, ref = "live", "live_ledger"
+    else:
+        kind, ref = "backup", source
+    return [v for v in votes if v.get("source_kind") == kind and v.get("source_ref") == ref]
 
 
 def _selected_sources(args):
@@ -83,7 +124,19 @@ def sources():
     if g:
         return g
     live_ok = os.path.exists(LEDGER_FILE) and os.path.getsize(LEDGER_FILE) > 0
-    return jsonify({"live": {"available": live_ok, "ephemeral": True}, "backups": _allowed_backups()})
+    backups = []
+    for b in _allowed_backups():
+        prompts_data, first_prompt, gsn, _weights = analyze_chat_backup(b["file"])
+        if not prompts_data:
+            continue
+        fp = first_prompt or _backup_first_prompt(b["file"])
+        backups.append({"file": b["file"], "label": b["label"], "first_prompt": fp,
+                        "prompt_preview": _preview(fp),
+                        "grader_setting": gsn or "default"})
+    live_fp = _live_first_prompt() if live_ok else ""
+    return jsonify({"live": {"available": live_ok, "ephemeral": True,
+                             "first_prompt": live_fp, "prompt_preview": _preview(live_fp)},
+                    "backups": backups})
 
 
 @pref_bp.route('/api/arena/source/meta')
@@ -133,6 +186,81 @@ def source_restore():
         return jsonify({"error": "invalid filename"}), 400
     add_to_review_manifest(_who(), fn)
     return jsonify({"ok": True, "backups": _allowed_backups()})
+
+
+# ---------- conflicts report / grading-version selection / judgments overlay ----------
+def _clean_versions(versions):
+    return [{k: v for k, v in ver.items() if not k.startswith("_")} for ver in versions]
+
+
+@pref_bp.route('/api/arena/source/conflicts')
+def source_conflicts():
+    g = _api_guard()
+    if g:
+        return g
+    who = _who()
+    source = request.args.get("source", "live")
+    version_arg = request.args.get("version")
+    chat_votes = _votes_for_source(store.iter_votes(who), source)
+    versions = pref_conflicts.list_grading_versions(chat_votes)
+    ckey = pref_conflicts.content_key(chat_votes)
+    persisted = store.get_grading_selection(who, ckey)
+    active = pref_conflicts.resolve_active(version_arg, versions, persisted)
+    eff = pref_conflicts.effective_votes(chat_votes, active, versions)
+    rows, summary = pref_conflicts.conflicts_for_votes(eff)
+    return jsonify({"source": source, "source_key": ckey, "active_version": active,
+                    "persisted_version": persisted, "versions": _clean_versions(versions),
+                    "summary": summary, "conflicts": rows})
+
+
+@pref_bp.route('/api/arena/source/grading_selection', methods=['POST'])
+def source_grading_selection():
+    g = _api_guard()
+    if g:
+        return g
+    who = _who()
+    b = request.get_json(force=True)
+    source = b.get("source", "live")
+    version_id = b.get("version_id", "original")
+    chat_votes = _votes_for_source(store.iter_votes(who), source)
+    versions = pref_conflicts.list_grading_versions(chat_votes)
+    if version_id not in {v["version_id"] for v in versions}:
+        return jsonify({"error": "invalid version"}), 400
+    ckey = pref_conflicts.content_key(chat_votes)
+    store.set_grading_selection(who, ckey, version_id)
+    return jsonify({"ok": True, "active_version": version_id, "source_key": ckey})
+
+
+@pref_bp.route('/api/arena/judgments')
+def arena_judgments():
+    g = _api_guard()
+    if g:
+        return g
+    who = _who()
+    groups = {}
+    for v in store.iter_votes(who):
+        groups.setdefault((v.get("source_kind"), v.get("source_ref")), []).append(v)
+    items = {}
+    for gv in groups.values():
+        versions = pref_conflicts.list_grading_versions(gv)
+        ckey = pref_conflicts.content_key(gv)
+        persisted = store.get_grading_selection(who, ckey)
+        active = pref_conflicts.resolve_active(None, versions, persisted)
+        eff = pref_conflicts.effective_votes(gv, active, versions)
+        rows, _ = pref_conflicts.conflicts_for_votes(eff)
+        for r in rows:
+            lh, rh = r["left"]["hash"] or "", r["right"]["hash"] or ""
+            pair_key = "|".join(sorted([lh, rh]))
+            user_pick_hash = lh if r["verdict"] == "left" else rh
+            grader_pick_hash = (lh if r["grader_pick"] == "left"
+                                else rh if r["grader_pick"] == "right" else None)
+            items[pair_key] = {
+                "prompt_text": r["prompt_text"], "prompt_number": r["prompt_number"],
+                "left_hash": lh, "right_hash": rh,
+                "user_pick_hash": user_pick_hash, "grader_pick_hash": grader_pick_hash,
+                "is_conflict": r["is_conflict"], "active_version": active,
+            }
+    return jsonify({"items": list(items.values())})
 
 
 # ---------- arena: scan / next / vote / refine ----------
@@ -248,10 +376,11 @@ def cal_regrade():
     votes = store.iter_votes(_who())
     if not [v for v in votes if v["verdict"] in ("left", "right")]:
         return jsonify({"error": "no decisive votes"})
-    regraded = calibrate.regrade_calibration_set(votes, name)
+    run_id = uuid.uuid4().hex
+    regraded = calibrate.regrade_calibration_set(votes, name, run_id)
     rep = calibrate.fitness_report(calibrate.apply_regrade(votes, regraded), cfg["weights"])
     store.save_calibration_run({
-        "run_id": uuid.uuid4().hex, "annotator": _who(),
+        "run_id": run_id, "annotator": _who(),
         "grader_setting": name, "weights_json": json.dumps(cfg["weights"]),
         "tier": "full_regrade", "n_pairs": rep["n_pairs"],
         "pairwise_acc": rep["pairwise_acc"], "cohen_kappa": rep["cohen_kappa"],

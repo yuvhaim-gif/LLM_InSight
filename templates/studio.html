@@ -3,6 +3,7 @@
 <head>
     {% include 'partials/_head_common.html' %}
     <title>LLM🔍InSights - Preference Studio</title>
+    {% include 'partials/_head_charts.html' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/arena.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dataset.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/studio.css') }}">
@@ -213,9 +214,32 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="conflictsModal">
+    <div class="modal-box conflicts-box">
+        <div class="conflicts-head">
+            <h3>⚠️ Conflicts Report</h3>
+            <button id="conflicts-close" class="arena-btn ghost" type="button">Close</button>
+        </div>
+        <p class="conflicts-sub">Where the grader disagreed with your decisive judgments for this chat. Pick a grading run to compare against.</p>
+        <div class="conflicts-toolbar">
+            <label for="conflicts-version-select">Grading run<span class="info-icon" tabindex="0" role="img" aria-label="Choose which grading run to compare your judgments against. The latest run is selected by default; your choice is saved for this chat." data-tooltip="Choose which grading run to compare your judgments against. The latest run is selected by default; your choice is saved for this chat.">i</span></label>
+            <select id="conflicts-version-select"></select>
+            <div id="conflicts-summary" class="conflicts-summary">—</div>
+        </div>
+        <div id="conflicts-list" class="conflicts-list"></div>
+    </div>
+</div>
+
+{% with modal_title='📊 Deeper Analysis', modal_placeholder='' %}
+{% include 'partials/_deeper_analysis_modal.html' %}
+{% endwith %}
+
 {% include 'partials/_footer.html' %}
 
 <script>window.__STUDIO_TAB__ = {{ initial_tab|tojson }};</script>
+<script src="{{ url_for('static', filename='js/shared/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/shared/chart-helpers.js') }}"></script>
+<script src="{{ url_for('static', filename='js/shared/deeper-analysis.js') }}"></script>
 <script type="module" src="{{ url_for('static', filename='js/studio/init.js') }}"></script>
 </body>
 </html>

@@ -26,4 +26,10 @@ export const Api = {
   refine: (body) => postJSON("/api/arena/refine", body),
   role: (pair_id, role) => postJSON("/api/arena/role", { pair_id, role }),
   report: () => getJSON("/api/calibrate/report"),
+  conflicts: (source, version) =>
+    getJSON("/api/arena/source/conflicts?source=" + encodeURIComponent(source) +
+      (version ? "&version=" + encodeURIComponent(version) : "")),
+  setGradingSelection: (source, version_id) =>
+    postJSON("/api/arena/source/grading_selection", { source, version_id }),
+  judgments: () => getJSON("/api/arena/judgments"),
 };

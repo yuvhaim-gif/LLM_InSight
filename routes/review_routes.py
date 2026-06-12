@@ -210,6 +210,7 @@ def analyze_chat_backup(filename):
                     best_best_model = ''
                 
                 prompts_data[prompt_str] = {
+                    'prompt_number': prompt_str,
                     'prompt_text': prompt_text,
                     'iteration_count': len(iterations),
                     'best_best_average': best_best_avg,

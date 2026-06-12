@@ -49,7 +49,8 @@ left rail listing all sources.
 
 - Each source row has a **checkbox** (tick to include the source in dataset **build/export**), a
   clickable **source name** and a **🥊 Grade** button (select that single chat and jump to the
-  Judge tab), plus **Analyze** / **Forget** for backups.
+  Judge tab), a **⚠️ Report** button (open the **Conflicts Report** for that chat — see §2.4),
+  plus **Analyze** / **Forget** for backups.
 - The live ledger is badged *ephemeral — current session only* and is read-only here.
 - The rail also shows the **Queue** progress and the live **Fitness** (accuracy + κ).
 
@@ -118,6 +119,36 @@ model-intensive action.
 - **Automated (machine)** — ledger pairs not human-judged, promoted to **AUTO+** only when they
   pass the margin + confidence thresholds, deduped, and capped per prompt; everything else lands
   in **REVIEW**.
+
+### 2.4 Conflicts Report
+
+The **⚠️ Report** button on each source row (live or backup) opens the **Conflicts Report** modal
+for that chat — a per-chat reconciliation of **your** decisive judgments against what the grader
+would pick, so you can see exactly where you and the grader disagree without leaving the rail. It
+is available for any chat you have judged, and you can reopen it at any time.
+
+- **Summary line** — number of conflicts out of decisive judgments, the pairwise accuracy, and
+  Cohen's κ for the chat under the selected grading version.
+- **Conflict rows** — only the pairs where your pick differs from the grader's. Each row shows the
+  prompt, both answers (text, model, overall, per-attribute grades), and badges marking **⭐ your
+  pick** and **🤖 the grader's pick**; an *Agreement* / *Conflict* banner summarises the row.
+- **Grading-version selector** — when a chat has been re-graded (e.g. via a Tier-B full re-grade),
+  the report lets you switch between the **Original** grading and each later **run** (Run 1, Run 2,
+  …). The newest run is labelled *(last)* and is auto-selected on first open; conflicts, accuracy,
+  and κ recompute against the chosen version.
+- **Persisted selection** — the version you choose is **saved per chat** (keyed by the chat's
+  answer content, so it survives re-scans) and reused the next time you open the report. Only you
+  can change it; it never alters the stored votes or the chat's grades.
+- **No conflicts** — if the grader agrees with all your decisive judgments for the chat, the report
+  shows a clear *no conflicts* state.
+
+Backing endpoints (all under `pref_bp`, auth-guarded):
+
+| Method | Path | Description |
+|---|---|---|
+| `GET /api/arena/source/conflicts` | Conflict rows + summary for a source under the active grading version, plus the list of available versions |
+| `POST /api/arena/source/grading_selection` | Persist the chosen grading version for that chat (validated against the available versions) |
+| `GET /api/arena/judgments` | Per-pair user-pick vs grader-pick map across all judged chats (for cross-page conflict indicators) |
 
 ---
 
@@ -205,19 +236,22 @@ New isolated package and assets:
 
 - `preference/` — `store.py` (SQLite), `extract.py` (pairs from ledger/backups),
   `active_learning.py` (queue scoring), `calibrate.py` (metrics, re-fit, re-grade),
-  `dataset.py` (pools + examples), `export.py` (writers), `routes.py` (blueprint).
-- `templates/studio.html` — the unified two-tab page (`/arena` and `/dataset` both render it);
-  the calibration panel is hosted on `templates/config_graders.html`.
+  `conflicts.py` (grading versions + per-chat conflict reconciliation), `dataset.py`
+  (pools + examples), `export.py` (writers), `routes.py` (blueprint).
+- `templates/studio.html` — the unified two-tab page (`/arena` and `/dataset` both render it),
+  including the **Conflicts Report** modal; the calibration panel is hosted on
+  `templates/config_graders.html`.
 - `static/js/studio/init.js` — the page orchestrator (tabs, shared source rail), which **reuses**
-  the logic modules `static/js/arena/{state,api,arena,refine}.js`,
+  the logic modules `static/js/arena/{state,api,arena,refine,conflicts}.js`,
   `static/js/dataset/{table,export}.js`, and `static/js/calibrate/panel.js` unchanged.
-- `static/css/studio.css`, `static/css/arena.css`, `static/css/dataset.css`.
+- `static/css/studio.css` (incl. the conflicts-report styles), `static/css/arena.css`,
+  `static/css/dataset.css`.
 
 Config constants (in `config/settings.py`):
 
 | Constant | Meaning |
 |---|---|
-| `PREFERENCES_DB` | Isolated SQLite DB for judgments, queue, blacklist, calibration runs |
+| `PREFERENCES_DB` | Isolated SQLite DB for judgments, queue, blacklist, calibration runs, and per-chat grading-version selections |
 | `PREFERENCE_EXPORT_DIR` | Where exported datasets are written |
 | `PREFERENCE_REGRADE_DIR` | Where Tier-B re-grade artifacts are written |
 | `ARENA_QUEUE_WEIGHTS`, `ARENA_CROSS_*`, `ARENA_PASS_THRESHOLDS` | Active-learning queue + pairing knobs |
@@ -232,9 +266,9 @@ Config constants (in `config/settings.py`):
 
 ## 6. Persistence & security guarantees
 
-- **Isolation** — all judgments, queue, blacklist, and calibration runs live in `PREFERENCES_DB`;
-  exports and re-grade artifacts live in their own directories. None of this is touched by the
-  app's clear/backup of the live session.
+- **Isolation** — all judgments, queue, blacklist, calibration runs, and per-chat grading-version
+  selections live in `PREFERENCES_DB`; exports and re-grade artifacts live in their own
+  directories. None of this is touched by the app's clear/backup of the live session.
 - **The live ledger is ephemeral and read-only here** — the Judge tab can read it as a source, but
   Preference Studio never writes to it.
 - **Re-grade never pollutes the ledger** — Tier-B full re-grade calls the lower-level
