@@ -193,6 +193,21 @@ def _clean_versions(versions):
     return [{k: v for k, v in ver.items() if not k.startswith("_")} for ver in versions]
 
 
+def _conflict_weights(args):
+    raw = args.get("weights")
+    if raw:
+        try:
+            w = json.loads(raw)
+            if isinstance(w, dict) and w:
+                return {k: float(val) for k, val in w.items()}
+        except (ValueError, TypeError):
+            return None
+    name = args.get("grader_setting")
+    if name:
+        return get_grader_config(name).get("weights")
+    return None
+
+
 @pref_bp.route('/api/arena/source/conflicts')
 def source_conflicts():
     g = _api_guard()
@@ -201,13 +216,14 @@ def source_conflicts():
     who = _who()
     source = request.args.get("source", "live")
     version_arg = request.args.get("version")
+    weights = _conflict_weights(request.args)
     chat_votes = _votes_for_source(store.iter_votes(who), source)
     versions = pref_conflicts.list_grading_versions(chat_votes)
     ckey = pref_conflicts.content_key(chat_votes)
     persisted = store.get_grading_selection(who, ckey)
     active = pref_conflicts.resolve_active(version_arg, versions, persisted)
     eff = pref_conflicts.effective_votes(chat_votes, active, versions)
-    rows, summary = pref_conflicts.conflicts_for_votes(eff)
+    rows, summary = pref_conflicts.conflicts_for_votes(eff, weights)
     return jsonify({"source": source, "source_key": ckey, "active_version": active,
                     "persisted_version": persisted, "versions": _clean_versions(versions),
                     "summary": summary, "conflicts": rows})

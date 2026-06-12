@@ -335,9 +335,121 @@
 }
 
 .conflicts-summary {
-    margin-left: auto;
     font-size: 0.82rem;
     color: #2d3436;
+    margin-bottom: 12px;
+}
+
+.cs-headline {
+    font-size: 0.92rem;
+    margin-bottom: 6px;
+}
+
+.cs-good {
+    color: #0f8f56;
+}
+
+.cs-bad {
+    color: #c0392b;
+}
+
+.cs-bar {
+    position: relative;
+    height: 10px;
+    background: #e9ecef;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.cs-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    background: #e0a106;
+    transition: width 0.2s ease;
+}
+
+.cs-bar-fill.good {
+    background: #0f8f56;
+}
+
+.cs-bar-target {
+    position: absolute;
+    top: -2px;
+    width: 2px;
+    height: 14px;
+    background: #2d3436;
+    opacity: 0.55;
+}
+
+.cs-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.cs-chip {
+    font-size: 0.76rem;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 2px 9px;
+    background: #eef1f5;
+    color: #2d3436;
+}
+
+.cs-chip.contradict {
+    background: rgba(220, 53, 69, 0.12);
+    color: #b02a37;
+}
+
+.cs-chip.tie {
+    background: rgba(99, 110, 114, 0.14);
+    color: #4b5358;
+}
+
+.cs-chip.agree {
+    background: rgba(0, 184, 148, 0.14);
+    color: #0c7a63;
+}
+
+.cs-chip.muted {
+    background: transparent;
+    color: #97a2ad;
+    font-weight: 400;
+}
+
+.cs-goal {
+    margin-top: 6px;
+}
+
+.conflicts-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.conflicts-filter-btn {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #495057;
+    background: #f1f3f7;
+    border: 1px solid #d6dbe1;
+    border-radius: 999px;
+    padding: 5px 12px;
+    cursor: pointer;
+}
+
+.conflicts-filter-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border-color: transparent;
+}
+
+.conflicts-filter-btn .cf-count {
+    opacity: 0.7;
+    font-weight: 700;
 }
 
 .conflicts-list {
@@ -345,11 +457,30 @@
     padding-right: 4px;
 }
 
+.conflict-section {
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #636e72;
+    margin: 14px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #eef1f5;
+}
+
+.conflict-section:first-child {
+    margin-top: 0;
+}
+
 .conflicts-empty {
     padding: 24px;
     text-align: center;
     color: #00b894;
     font-weight: 700;
+}
+
+.conflicts-empty.neutral {
+    color: #636e72;
 }
 
 .conflict-row {
@@ -428,6 +559,101 @@
 .conflict-mark.grader {
     background: rgba(108, 92, 231, 0.16);
     color: #6c5ce7;
+}
+
+.conflict-row.status-contradict {
+    box-shadow: inset 3px 0 0 #dc3545;
+}
+
+.conflict-row.status-tie {
+    box-shadow: inset 3px 0 0 #97a2ad;
+}
+
+.conflict-row.status-agree {
+    box-shadow: inset 3px 0 0 #00b894;
+}
+
+.conflict-banner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border-left: 4px solid #97a2ad;
+    background: rgba(99, 110, 114, 0.08);
+}
+
+.conflict-banner.contradict {
+    border-left-color: #dc3545;
+    background: rgba(220, 53, 69, 0.12);
+}
+
+.conflict-banner.tie {
+    border-left-color: #97a2ad;
+    background: rgba(99, 110, 114, 0.10);
+}
+
+.conflict-banner.agree {
+    border-left-color: #00b894;
+    background: rgba(0, 184, 148, 0.12);
+}
+
+.conflict-banner .cb-status {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #2d3436;
+}
+
+.conflict-banner .cb-pick {
+    font-size: 0.85rem;
+    color: #2d3436;
+}
+
+.conflict-banner .cb-margin {
+    margin-left: auto;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #636e72;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 999px;
+    padding: 2px 9px;
+}
+
+.conflict-attrs {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.cf-attrs-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #97a2ad;
+    margin-right: 2px;
+}
+
+.cf-attr {
+    font-size: 0.72rem;
+    border-radius: 6px;
+    padding: 2px 8px;
+    background: #eef1f5;
+    color: #2d3436;
+}
+
+.cf-attr.tie {
+    color: #97a2ad;
+}
+
+.cf-attr.drives {
+    background: rgba(220, 53, 69, 0.14);
+    color: #b02a37;
+    font-weight: 700;
 }
 
 .conflict-actions {

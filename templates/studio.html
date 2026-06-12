@@ -220,12 +220,13 @@
             <h3>⚠️ Conflicts Report</h3>
             <button id="conflicts-close" class="arena-btn ghost" type="button">Close</button>
         </div>
-        <p class="conflicts-sub">Where the grader disagreed with your decisive judgments for this chat. Pick a grading run to compare against.</p>
+        <p class="conflicts-sub">See where the grader agrees with your decisive picks and where it conflicts. Tune graders, weights and attributes until it matches all (or most) of your preferences.</p>
         <div class="conflicts-toolbar">
             <label for="conflicts-version-select">Grading run<span class="info-icon" tabindex="0" role="img" aria-label="Choose which grading run to compare your judgments against. The latest run is selected by default; your choice is saved for this chat." data-tooltip="Choose which grading run to compare your judgments against. The latest run is selected by default; your choice is saved for this chat.">i</span></label>
             <select id="conflicts-version-select"></select>
-            <div id="conflicts-summary" class="conflicts-summary">—</div>
         </div>
+        <div id="conflicts-summary" class="conflicts-summary">—</div>
+        <div id="conflicts-filters" class="conflicts-filters"></div>
         <div id="conflicts-list" class="conflicts-list"></div>
     </div>
 </div>
