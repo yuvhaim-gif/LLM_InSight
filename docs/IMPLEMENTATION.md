@@ -78,6 +78,7 @@ Route contracts, runtime behavior, JSON schemas, configuration, and frontend int
 | Method | Path | Description |
 |---|---|---|
 | `POST /save_current_selection` | Mark session as modified (flush pending state) |
+| `POST /save_chat_for_review` | Back up the current session to `backup/` and add it to the user's review manifest |
 | `GET /get_backup_data` | Export full session as JSON (version 2.0) |
 | `GET /review_chats` | Render review page |
 | `GET /get_chat_stats` | Get stats for all backup files in `backup/` |
@@ -141,8 +142,8 @@ Pages redirect to `/login` when unauthenticated; every `/api/...` endpoint retur
    - Layer 2: rewrite prompt (when enabled) using grader feedback, weights, best answers, micro-replies, and context.
    - Layer 1B: answer with rewritten prompt (or original if Layer 2 off/failed).
    - Layer 3: grade Layer 1B (same fallback logic with session weights).
-   - Pick winner (`improved` wins ties for iteration best selection and recorded winner).
-   - Record A/B test result (original score, improved score, winner).
+   - Pick the iteration best — the improved answer wins an exact tie (`improved_score >= orig_score`).
+   - Record the A/B test result (original score, improved score, winner). The recorded `winner` uses a strict comparison (`improved_score > orig_score`), so an exact tie is recorded as `original` even though the improved answer is kept as the iteration best. (The review/deeper-analysis display recomputes the displayed winner with `>=`, so it shows the improved side on a tie.)
    - Persist iteration data.
 4. Stop on first match: score >= `min_grade`, degradation break (score dropped), or `max_iterations` reached.
 5. Mark best-best/ties, save to `iteration_history.json`, `best_best_layer1.json`, and ledger.
@@ -284,7 +285,7 @@ for their meanings and the export-format contracts.
 
 | Package | Purpose |
 |---|---|
-| `pytest` | Contract test suite (181 tests: backup schema, restore, advanced maps, auth matrix, provider routing, plus the full Preference Studio package via `test_pref_*`) |
+| `pytest` | Contract test suite (184 tests: 102 core — backup schema, restore, advanced maps, auth matrix, provider routing — plus 82 Preference Studio tests via `test_pref_*`) |
 
 ### Grader Settings (`graderdata/*.jsonl`)
 

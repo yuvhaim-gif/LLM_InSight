@@ -33,7 +33,7 @@ How the tool is structured — components, data flow, and persistence. It enable
 | Frontend JS | `static/js/shared/` (utils, chart-helpers, deeper-analysis), `static/js/main/` (weights, filters, toggles, models, grader-settings, download, upload, processing, advanced, init), `static/js/review/` (state, chat-list, prompt-view, prompt-chart, modals, init), `static/js/studio/init.js` (Preference Studio orchestrator) reusing `static/js/arena/` (state, api, arena, refine), `static/js/dataset/` (table, export), `static/js/calibrate/panel.js`, `static/js/config_graders.js` | Modular scripts loaded per page; shared modules provide common utilities and the Deeper Analysis modal |
 | Frontend CSS | `static/css/shared.css` (base reset, body gradient, star overlay, keyframes, footer, logo-circle, deeper-analysis modal), `static/css/main.css`, `static/css/review.css`, `static/css/config_graders.css`, `static/css/studio.css`, `static/css/arena.css`, `static/css/dataset.css` | Shared base styles loaded first; page-specific files contain only overrides and unique rules |
 | Template partials | `templates/partials/_head_common.html` (meta, favicon, font, shared.css), `_head_charts.html` (Chart.js CDN), `_footer.html`, `_logo_badge.html` (parameterized size), `_deeper_analysis_modal.html`, `_model_icon.html` (cloud icon macro), `_model_selector.html` (sidebar selector macro) | Jinja2 includes and macros eliminating repeated HTML across the 5 page templates (login, main, review, config_graders, studio) |
-| Contract tests | `tests/conftest.py`, `tests/test_backup_schema.py`, `tests/test_restore_behavior.py`, `tests/test_advanced_map_compat.py`, `tests/test_auth_matrix.py`, `tests/test_provider_routing.py`, `tests/test_pref_*.py` (Preference Studio) | 181 pytest contract tests validating shapes, boundaries, routing, auth, and the full Preference Studio package. No AI calls, no network, temp-dir isolation |
+| Contract tests | `tests/conftest.py`, `tests/test_backup_schema.py`, `tests/test_restore_behavior.py`, `tests/test_advanced_map_compat.py`, `tests/test_auth_matrix.py`, `tests/test_provider_routing.py`, `tests/test_pref_*.py` (Preference Studio) | 184 pytest contract tests (102 core + 82 Preference Studio) validating shapes, boundaries, routing, auth, and the full Preference Studio package. No AI calls, no network, temp-dir isolation |
 
 ## Provider Routing
 
@@ -147,7 +147,7 @@ the app's clear/backup of the live session. Full detail in [preference_studio.md
 - **Grader settings**: named configurations stored as JSONL in `graderdata/`. Each defines 1-8 grading keys with key name, rubric, grader model, and default weight. The `default` setting is read-only. Custom settings are created and managed via the Config Graders page (`/config_graders`). The active setting name is tracked in the session and included in chat backups.
 - **Weights**: configurable categories (1-8 per grader setting), normalized to sum 1. Priority: user-applied custom weights -> active grader config defaults -> hardcoded defaults. Switching grader settings clears custom weights.
 - **Toggles**: degradation break, change prompt, give ideas, last-best context, grade-vs-prompt mode (`current` or `first`)
-- **Loop parameters**: break target grade (1-100), max iterations (1-5)
+- **Loop parameters**: break target grade (backend clamps to 0-100; UI input range 1-100; default 100), max iterations (1-5)
 
 ### Frontend-only (browser storage, no backend effect)
 

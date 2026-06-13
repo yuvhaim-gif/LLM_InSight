@@ -318,7 +318,7 @@ pip install -r requirements-dev.txt
 pytest tests/ -v --tb=short
 ```
 
-The contract tests validate backup schema, restore behavior, advanced model map compatibility, auth matrix, provider routing, and the full Preference Studio package (`test_pref_*`: store, extraction, active-learning queue, calibration, dataset pools/examples, export, routes, and wiring). Tests use monkeypatched temp directories and an isolated SQLite database — no production files are touched, no AI models are called, and no `.env` file is required.
+The 184 contract tests (102 core + 82 Preference Studio) validate backup schema, restore behavior, advanced model map compatibility, auth matrix, provider routing, and the full Preference Studio package (`test_pref_*`: store, extraction, active-learning queue, calibration, dataset pools/examples, export, routes, sources, user-pref, and wiring). Tests use monkeypatched temp directories and an isolated SQLite database — no production files are touched, no AI models are called, and no `.env` file is required.
 
 ---
 
@@ -349,7 +349,7 @@ LangSmith/LangChain tracing is available on the orchestrating iterative loop and
 | `data/` | Runtime working files (ledger, cache, history, console output, state DB, and the isolated `preferences.db` + `preferences_export/` / `preferences_regrade/` dirs). Auto-created on first run; git-ignored except a `.gitkeep` placeholder |
 | `graderdata/` | JSONL grader setting files |
 | `routes/` | `web_routes.py`, `api_routes.py`, `review_routes.py` |
-| `preference/` | Isolated Preference Studio package: `store.py`, `extract.py`, `active_learning.py`, `calibrate.py`, `dataset.py`, `export.py`, `routes.py` |
+| `preference/` | Isolated Preference Studio package: `store.py`, `extract.py`, `active_learning.py`, `calibrate.py`, `conflicts.py`, `dataset.py`, `export.py`, `routes.py` |
 | `ai/` | `iterative_loop.py`, `iteration_summary.py`, `layer0.py`, `layer1.py`, `layer2.py`, `layer3.py`, `api_calls.py` |
 | `utils/` | `session.py`, `session_keys.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py` |
 | `scripts/` | Developer utility scripts (`check_syntax.py`, `check_modified.py`, `create_graderdata.py`) |

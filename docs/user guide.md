@@ -211,7 +211,7 @@ Each time you press START ANALYSIS, the main page switches to a full-screen proc
    - **Layer 2** (optional): rewrites the prompt using grader feedback, best answers, micro-ideas, and weights. Uses Chain-of-Thought, Few-Shot, Tree of Thoughts, Role Prompting, and other techniques. Preserves the original prompt's intent.
    - **Layer 1B**: second model answers the rewritten prompt.
    - **Layer 3**: grades the improved answer.
-   - **A/B Result**: higher score wins. Ties go to the improved side. Both scores, the winner, and model metadata are recorded.
+   - **A/B Result**: the higher score wins. On an exact tie the improved answer is kept as that iteration's best, while the recorded winner field marks the original. Both scores, the winner, and model metadata are recorded.
    - **Best-best tracking**: if the winner beats all previous iterations, it becomes the new best.
    - **Stop checks**: loop ends if score reaches the target grade, or degradation break fires (score dropped).
 
