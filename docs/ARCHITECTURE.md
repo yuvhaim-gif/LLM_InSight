@@ -32,8 +32,8 @@ How the tool is structured — components, data flow, and persistence. It enable
 | Runtime state | `core/state.py` | Hybrid state module: delegates per-session serializable state to SQLite via `core/db.py`, keeps GLM cache/lock/cancel in-memory. Thread-local session ID cache (`set_cached_session_id`/`clear_cached_session_id`) avoids repeated Flask session lookups during loop runs |
 | Frontend JS | `static/js/shared/` (utils, chart-helpers, deeper-analysis), `static/js/main/` (weights, filters, toggles, models, grader-settings, download, upload, processing, advanced, init), `static/js/review/` (state, chat-list, prompt-view, prompt-chart, modals, init), `static/js/studio/init.js` (Preference Studio orchestrator) reusing `static/js/arena/` (state, api, arena, refine), `static/js/dataset/` (table, export), `static/js/calibrate/panel.js`, `static/js/config_graders.js` | Modular scripts loaded per page; shared modules provide common utilities and the Deeper Analysis modal |
 | Frontend CSS | `static/css/shared.css` (base reset, body gradient, star overlay, keyframes, footer, logo-circle, deeper-analysis modal), `static/css/main.css`, `static/css/review.css`, `static/css/config_graders.css`, `static/css/studio.css`, `static/css/arena.css`, `static/css/dataset.css` | Shared base styles loaded first; page-specific files contain only overrides and unique rules |
-| Template partials | `templates/partials/_head_common.html` (meta, favicon, font, shared.css), `_head_charts.html` (Chart.js CDN), `_footer.html`, `_logo_badge.html` (parameterized size), `_deeper_analysis_modal.html`, `_model_icon.html` (cloud icon macro), `_model_selector.html` (sidebar selector macro) | Jinja2 includes and macros eliminating repeated HTML across the 5 page templates (login, main, review, config_graders, studio) |
-| Contract tests | `tests/conftest.py`, `tests/test_backup_schema.py`, `tests/test_restore_behavior.py`, `tests/test_advanced_map_compat.py`, `tests/test_auth_matrix.py`, `tests/test_provider_routing.py`, `tests/test_pref_*.py` (Preference Studio) | 184 pytest contract tests (102 core + 82 Preference Studio) validating shapes, boundaries, routing, auth, and the full Preference Studio package. No AI calls, no network, temp-dir isolation |
+| Template partials | `templates/partials/_head_common.html` (meta, CSRF token meta + `csrf.js`, favicon, font, shared.css), `_head_charts.html` (Chart.js CDN), `_footer.html`, `_logo_badge.html` (parameterized size), `_deeper_analysis_modal.html`, `_model_icon.html` (cloud icon macro), `_model_selector.html` (sidebar selector macro) | Jinja2 includes and macros eliminating repeated HTML across the 5 page templates (login, main, review, config_graders, studio) |
+| Contract tests | `tests/conftest.py`, `tests/test_backup_schema.py`, `tests/test_restore_behavior.py`, `tests/test_advanced_map_compat.py`, `tests/test_auth_matrix.py`, `tests/test_provider_routing.py`, `tests/test_route_refactor_parity.py`, `tests/test_csrf.py`, `tests/test_pref_*.py` (Preference Studio) | 217 pytest contract tests (135 core + 82 Preference Studio) validating shapes, boundaries, routing, auth, CSRF, and the full Preference Studio package. No AI calls, no network, temp-dir isolation |
 
 ## Provider Routing
 
@@ -220,11 +220,11 @@ LangSmith/LangChain tracing enabled via environment variables in `config/setting
 | `routes/` | `web_routes.py`, `api_routes.py`, `review_routes.py`, `__init__.py` |
 | `preference/` | `store.py`, `extract.py`, `active_learning.py`, `calibrate.py`, `conflicts.py`, `dataset.py`, `export.py`, `routes.py`, `__init__.py` (Preference Studio) |
 | `ai/` | `iterative_loop.py`, `iteration_summary.py`, `layer0.py`, `layer1.py`, `layer2.py`, `layer3.py`, `api_calls.py` |
-| `utils/` | `session.py`, `session_keys.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py` |
+| `utils/` | `session.py`, `session_keys.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py`, `csrf.py` |
 | `scripts/` | Developer utility scripts (`check_syntax.py`, `check_modified.py`, `create_graderdata.py`) |
 | `templates/` | Jinja2 templates (`login.html`, `main.html`, `review.html`, `config_graders.html`, `studio.html`) + `partials/` |
 | `static/css/` | `shared.css`, `main.css`, `review.css`, `config_graders.css`, `studio.css`, `arena.css`, `dataset.css` |
-| `static/js/shared/` | `utils.js`, `chart-helpers.js`, `deeper-analysis.js` |
+| `static/js/shared/` | `utils.js`, `chart-helpers.js`, `deeper-analysis.js`, `csrf.js` (global `fetch` CSRF wrapper) |
 | `static/js/main/` | `init.js`, `weights.js`, `filters.js`, `toggles.js`, `models.js`, `grader-settings.js`, `download.js`, `upload.js`, `processing.js`, `advanced.js` |
 | `static/js/review/` | `init.js`, `state.js`, `chat-list.js`, `prompt-view.js`, `prompt-chart.js`, `modals.js` |
 | `static/js/studio/` | `init.js` (page orchestrator; reuses the `arena/`, `dataset/`, `calibrate/` logic modules) |
@@ -232,7 +232,7 @@ LangSmith/LangChain tracing enabled via environment variables in `config/setting
 | `static/js/dataset/` | `table.js`, `export.js` (build/export logic) |
 | `static/js/calibrate/` | `panel.js` (Calibration panel on Config Graders) |
 | `static/js/` | `config_graders.js` |
-| `tests/` | `conftest.py`, `test_backup_schema.py`, `test_restore_behavior.py`, `test_advanced_map_compat.py`, `test_auth_matrix.py`, `test_provider_routing.py`, `test_pref_*.py` (Preference Studio) |
+| `tests/` | `conftest.py`, `test_backup_schema.py`, `test_restore_behavior.py`, `test_advanced_map_compat.py`, `test_auth_matrix.py`, `test_provider_routing.py`, `test_route_refactor_parity.py`, `test_csrf.py`, `test_pref_*.py` (Preference Studio) |
 | `screenshots/` | Demo GIF and images |
 
 ## References

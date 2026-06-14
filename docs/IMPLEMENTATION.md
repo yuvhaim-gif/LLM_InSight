@@ -21,6 +21,15 @@ Route contracts, runtime behavior, JSON schemas, configuration, and frontend int
 | `POST /clear_chat` | Back up and reset runtime state (stay logged in) |
 | `POST /shutdown-notify` | Acknowledge browser close (no-op) |
 
+### CSRF Protection
+
+All mutating requests (`POST`/`PUT`/`PATCH`/`DELETE`) require a CSRF token when `CSRF_ENABLED` is true (default in production; disabled in the test harness via `tests/conftest.py`). Implemented in `utils/csrf.py` and wired in `main.py` via `init_csrf(app)`.
+
+- **Token source**: per-session token `secrets.token_hex(32)` stored in `session['_csrf_token']`, lazily created by the `csrf_token()` Jinja context processor and rendered into `<meta name="csrf-token">` (in `templates/partials/_head_common.html`) and into a hidden `csrf_token` field in every HTML form (`analysisForm`, `clear-form`, login form).
+- **Submission**: HTML form posts send the hidden `csrf_token` field; JavaScript `fetch` posts send an `X-CSRFToken` request header injected by the global wrapper `static/js/shared/csrf.js` (loaded for all pages from the shared head partial). The wrapper only adds the header to same-origin, non-safe-method requests.
+- **Validation**: an `app.before_request` hook compares the submitted header/field against the session token using `hmac.compare_digest`. Safe methods (`GET`/`HEAD`/`OPTIONS`/`TRACE`) and the exempt endpoint `api.shutdown_notify` (no-op, callable via `sendBeacon`) are skipped. Failures return `400 {"error": "CSRF validation failed"}`.
+- **Token lifecycle**: `logout` and `clear_chat` call `session.clear()` (wiping the token) but both trigger a navigation/reload to a `GET` page that regenerates it; login GET seeds the token before the login POST.
+
 ### Progress
 
 | Method | Path | Description |

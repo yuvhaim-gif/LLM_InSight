@@ -398,7 +398,17 @@ def _load_glm_model(model_name: str):
                 tokenizer.pad_token = tokenizer.eos_token
             device = "cuda" if torch.cuda.is_available() else "cpu"
             dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
-            
+
+            if torch.cuda.is_available():
+                try:
+                    import importlib.util
+                    has_flash_attn = importlib.util.find_spec("flash_attn") is not None
+                except Exception:
+                    has_flash_attn = False
+                attn_impl = "flash_attention_2" if has_flash_attn else "sdpa"
+            else:
+                attn_impl = None
+
             model = AutoModelForCausalLM.from_pretrained(
                 hf_model_id,
                 torch_dtype=dtype,
@@ -406,7 +416,7 @@ def _load_glm_model(model_name: str):
                 trust_remote_code=True,
                 device_map="auto" if torch.cuda.is_available() else None,
                 use_safetensors=True,
-                attn_implementation="flash_attention_2" if torch.cuda.is_available() else None
+                attn_implementation=attn_impl
             )
 
             if state._glm_cancel_load.is_set():

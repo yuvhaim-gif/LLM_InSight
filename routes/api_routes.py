@@ -2,6 +2,7 @@ import os
 import logging
 import json
 import threading
+from functools import wraps
 from flask import request, session, jsonify, redirect, url_for, render_template_string
 from routes import api_bp
 
@@ -53,6 +54,95 @@ else:
 def check_auth():
     return session.get(SK_LOGGED_IN, False)
 
+def login_required(f):
+    @wraps(f)
+    def _wrapped(*args, **kwargs):
+        if not check_auth():
+            return jsonify({'error': 'Not authenticated'}), 401
+        return f(*args, **kwargs)
+    return _wrapped
+
+def _apply_default_settings():
+    session[SK_PROMPT_HISTORY] = []
+    session[SK_DEGRADATION_BREAK_ENABLED] = True
+    session[SK_CHANGE_PROMPT_BETWEEN_LAYERS1] = True
+    session[SK_GIVE_IDEAS_ENABLED] = True
+    session[SK_LAYER1_LAST_BEST_CONTEXT_ENABLED] = True
+    session[SK_GRADE_VS_PROMPT_MODE] = 'current'
+    session[SK_GRADER_SETTING_NAME] = 'default'
+    session[SK_MIN_GRADE] = 100
+    session[SK_MAX_ITERATIONS] = 5
+    session.pop(SK_LAYER1A_MODEL, None)
+    session.pop(SK_LAYER1B_MODEL, None)
+    session.pop(SK_LAYER0_MODEL, None)
+    session.pop(SK_LAYER2_MODEL, None)
+    session.pop(SK_CUSTOM_WEIGHTS, None)
+    set_large_session_data(SK_ADVANCED_LAYER1A_MODELS, {})
+    set_large_session_data(SK_ADVANCED_LAYER1B_MODELS, {})
+    set_large_session_data(SK_ADVANCED_LAYER2_MODELS, {})
+
+def _make_update_model_route(session_key, available_models, missing_default):
+    @login_required
+    def _view():
+        try:
+            data = request.get_json()
+            model = data.get('model', missing_default)
+            if model not in available_models:
+                return jsonify({'error': f'Invalid model'}), 400
+            session[session_key] = model
+            session.modified = True
+            return jsonify({'success': True, 'model': model})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    return _view
+
+def _make_reset_model_route(session_key, default_model):
+    @login_required
+    def _view():
+        session.pop(session_key, None)
+        return jsonify({'success': True, 'model': default_model})
+    return _view
+
+def _make_toggle_route(session_key):
+    @login_required
+    def _view():
+        try:
+            data = request.get_json()
+            enabled = data.get('enabled', True)
+            session[session_key] = bool(enabled)
+            session.modified = True
+            return jsonify({'success': True, 'enabled': session[session_key]})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    return _view
+
+_MODEL_ROUTE_SPECS = [
+    ('layer1a', SK_LAYER1A_MODEL, AVAILABLE_LAYER1A_MODELS, DEFAULT_LAYER1A_MODEL, ''),
+    ('layer1b', SK_LAYER1B_MODEL, AVAILABLE_LAYER1B_MODELS, DEFAULT_LAYER1B_MODEL, ''),
+    ('layer0', SK_LAYER0_MODEL, AVAILABLE_LAYER0_MODELS, DEFAULT_LAYER0_MODEL, ''),
+    ('layer2', SK_LAYER2_MODEL, AVAILABLE_LAYER2_MODELS, DEFAULT_LAYER2_MODEL, DEFAULT_LAYER2_MODEL),
+]
+
+for _layer, _sk, _available, _default, _missing in _MODEL_ROUTE_SPECS:
+    api_bp.add_url_rule(
+        f'/update_{_layer}_model', endpoint=f'update_{_layer}_model',
+        view_func=_make_update_model_route(_sk, _available, _missing), methods=['POST'])
+    api_bp.add_url_rule(
+        f'/reset_{_layer}_model', endpoint=f'reset_{_layer}_model',
+        view_func=_make_reset_model_route(_sk, _default), methods=['POST'])
+
+_TOGGLE_ROUTE_SPECS = [
+    ('set_degradation_break', SK_DEGRADATION_BREAK_ENABLED),
+    ('set_change_prompt_between_layers1', SK_CHANGE_PROMPT_BETWEEN_LAYERS1),
+    ('set_give_ideas', SK_GIVE_IDEAS_ENABLED),
+    ('set_layer1_last_best_context', SK_LAYER1_LAST_BEST_CONTEXT_ENABLED),
+]
+
+for _endpoint, _sk in _TOGGLE_ROUTE_SPECS:
+    api_bp.add_url_rule(
+        f'/{_endpoint}', endpoint=_endpoint,
+        view_func=_make_toggle_route(_sk), methods=['POST'])
+
 @api_bp.route('/iteration', methods=['GET'])
 def get_iteration():
     return jsonify({'iteration': state.get_current_iteration_value()})
@@ -81,23 +171,7 @@ def login():
             clear_file(BESTBEST_CACHE)
             session[SK_LOGGED_IN] = True
             session[SK_USER] = u
-            session[SK_PROMPT_HISTORY] = []
-            session[SK_DEGRADATION_BREAK_ENABLED] = True
-            session[SK_CHANGE_PROMPT_BETWEEN_LAYERS1] = True
-            session[SK_GIVE_IDEAS_ENABLED] = True
-            session[SK_LAYER1_LAST_BEST_CONTEXT_ENABLED] = True
-            session[SK_GRADE_VS_PROMPT_MODE] = 'current'
-            session[SK_GRADER_SETTING_NAME] = 'default'
-            session[SK_MIN_GRADE] = 100
-            session[SK_MAX_ITERATIONS] = 5
-            session.pop(SK_LAYER1A_MODEL, None)
-            session.pop(SK_LAYER1B_MODEL, None)
-            session.pop(SK_LAYER0_MODEL, None)
-            session.pop(SK_LAYER2_MODEL, None)
-            session.pop(SK_CUSTOM_WEIGHTS, None)
-            set_large_session_data(SK_ADVANCED_LAYER1A_MODELS, {})
-            set_large_session_data(SK_ADVANCED_LAYER1B_MODELS, {})
-            set_large_session_data(SK_ADVANCED_LAYER2_MODELS, {})
+            _apply_default_settings()
             state.reset_session_state()
             return redirect(url_for('main.index'))
         return render_template_string(LOGIN_TEMPLATE + '<div class="error-message">Invalid credentials</div>')
@@ -144,19 +218,8 @@ def clear_chat():
     session.clear()
     session[SK_LOGGED_IN] = True
     session[SK_USER] = ADMIN_USER
-    session[SK_PROMPT_HISTORY] = []
+    _apply_default_settings()
     session[SK_ALL_PROMPT_RESULTS] = []
-    session[SK_DEGRADATION_BREAK_ENABLED] = True
-    session[SK_CHANGE_PROMPT_BETWEEN_LAYERS1] = True
-    session[SK_GIVE_IDEAS_ENABLED] = True
-    session[SK_LAYER1_LAST_BEST_CONTEXT_ENABLED] = True
-    session[SK_GRADE_VS_PROMPT_MODE] = 'current'
-    session[SK_GRADER_SETTING_NAME] = 'default'
-    session[SK_MIN_GRADE] = 100
-    session[SK_MAX_ITERATIONS] = 5
-    set_large_session_data(SK_ADVANCED_LAYER1A_MODELS, {})
-    set_large_session_data(SK_ADVANCED_LAYER1B_MODELS, {})
-    set_large_session_data(SK_ADVANCED_LAYER2_MODELS, {})
     
     import gc
     gc.collect()
@@ -176,98 +239,9 @@ def clear_chat():
     '''
     return clear_html
 
-@api_bp.route('/update_layer1a_model', methods=['POST'])
-def update_layer1a_model():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
-    try:
-        data = request.get_json()
-        model = data.get('model', '')
-        if model not in AVAILABLE_LAYER1A_MODELS:
-            return jsonify({'error': f'Invalid model'}), 400
-        session[SK_LAYER1A_MODEL] = model
-        session.modified = True
-        return jsonify({'success': True, 'model': model})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@api_bp.route('/reset_layer1a_model', methods=['POST'])
-def reset_layer1a_model():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
-    session.pop(SK_LAYER1A_MODEL, None)
-    return jsonify({'success': True, 'model': DEFAULT_LAYER1A_MODEL})
-
-@api_bp.route('/update_layer1b_model', methods=['POST'])
-def update_layer1b_model():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
-    try:
-        data = request.get_json()
-        model = data.get('model', '')
-        if model not in AVAILABLE_LAYER1B_MODELS:
-            return jsonify({'error': f'Invalid model'}), 400
-        session[SK_LAYER1B_MODEL] = model
-        session.modified = True
-        return jsonify({'success': True, 'model': model})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@api_bp.route('/reset_layer1b_model', methods=['POST'])
-def reset_layer1b_model():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
-    session.pop(SK_LAYER1B_MODEL, None)
-    return jsonify({'success': True, 'model': DEFAULT_LAYER1B_MODEL})
-
-@api_bp.route('/update_layer0_model', methods=['POST'])
-def update_layer0_model():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
-    try:
-        data = request.get_json()
-        model = data.get('model', '')
-        if model not in AVAILABLE_LAYER0_MODELS:
-            return jsonify({'error': f'Invalid model'}), 400
-        session[SK_LAYER0_MODEL] = model
-        session.modified = True
-        return jsonify({'success': True, 'model': model})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@api_bp.route('/reset_layer0_model', methods=['POST'])
-def reset_layer0_model():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
-    session.pop(SK_LAYER0_MODEL, None)
-    return jsonify({'success': True, 'model': DEFAULT_LAYER0_MODEL})
-
-@api_bp.route('/update_layer2_model', methods=['POST'])
-def update_layer2_model():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
-    try:
-        data = request.get_json()
-        model = data.get('model', DEFAULT_LAYER2_MODEL)
-        if model not in AVAILABLE_LAYER2_MODELS:
-            return jsonify({'error': f'Invalid model'}), 400
-        session[SK_LAYER2_MODEL] = model
-        session.modified = True
-        return jsonify({'success': True, 'model': model})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@api_bp.route('/reset_layer2_model', methods=['POST'])
-def reset_layer2_model():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
-    session.pop(SK_LAYER2_MODEL, None)
-    return jsonify({'success': True, 'model': DEFAULT_LAYER2_MODEL})
-
 @api_bp.route('/update_weights', methods=['POST'])
+@login_required
 def update_weights():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
     try:
         data = request.get_json()
         weights = data.get('weights', {})
@@ -293,17 +267,15 @@ def update_weights():
         return jsonify({'error': str(e)}), 500
 
 @api_bp.route('/reset_weights', methods=['POST'])
+@login_required
 def reset_weights():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
     session.pop(SK_CUSTOM_WEIGHTS, None)
     active_config = get_grader_config(get_grader_setting_name())
     return jsonify({'success': True, 'weights': active_config.get('weights', CATEGORY_WEIGHTS)})
 
 @api_bp.route('/get_current_models', methods=['GET'])
+@login_required
 def get_current_models():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
     return jsonify({
         'success': True,
         'layer1a_model': get_session_layer1a_model(),
@@ -314,9 +286,8 @@ def get_current_models():
     })
 
 @api_bp.route('/get_advanced_models', methods=['GET'])
+@login_required
 def get_advanced_models():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
     layer1a_models = get_advanced_layer1a_models()
     layer1b_models = get_advanced_layer1b_models()
     layer2_models = get_advanced_layer2_models()
@@ -331,9 +302,8 @@ def get_advanced_models():
     })
 
 @api_bp.route('/save_advanced_models', methods=['POST'])
+@login_required
 def save_advanced_models():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
     try:
         data = request.get_json() or {}
         layer1a_models = data.get('layer1a_models', data.get('layer1a', {}))
@@ -348,71 +318,17 @@ def save_advanced_models():
         return jsonify({'error': str(e)}), 500
 
 @api_bp.route('/clear_advanced_models', methods=['POST'])
+@login_required
 def clear_advanced_models():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
     set_large_session_data(SK_ADVANCED_LAYER1A_MODELS, {})
     set_large_session_data(SK_ADVANCED_LAYER1B_MODELS, {})
     set_large_session_data(SK_ADVANCED_LAYER2_MODELS, {})
     session.modified = True
     return jsonify({'success': True})
 
-@api_bp.route('/set_degradation_break', methods=['POST'])
-def set_degradation_break():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
-    try:
-        data = request.get_json()
-        enabled = data.get('enabled', True)
-        session[SK_DEGRADATION_BREAK_ENABLED] = bool(enabled)
-        session.modified = True
-        return jsonify({'success': True, 'enabled': session[SK_DEGRADATION_BREAK_ENABLED]})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@api_bp.route('/set_change_prompt_between_layers1', methods=['POST'])
-def set_change_prompt_between_layers1():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
-    try:
-        data = request.get_json()
-        enabled = data.get('enabled', True)
-        session[SK_CHANGE_PROMPT_BETWEEN_LAYERS1] = bool(enabled)
-        session.modified = True
-        return jsonify({'success': True, 'enabled': session[SK_CHANGE_PROMPT_BETWEEN_LAYERS1]})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@api_bp.route('/set_give_ideas', methods=['POST'])
-def set_give_ideas():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
-    try:
-        data = request.get_json()
-        enabled = data.get('enabled', True)
-        session[SK_GIVE_IDEAS_ENABLED] = bool(enabled)
-        session.modified = True
-        return jsonify({'success': True, 'enabled': session[SK_GIVE_IDEAS_ENABLED]})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@api_bp.route('/set_layer1_last_best_context', methods=['POST'])
-def set_layer1_last_best_context():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
-    try:
-        data = request.get_json()
-        enabled = data.get('enabled', True)
-        session[SK_LAYER1_LAST_BEST_CONTEXT_ENABLED] = bool(enabled)
-        session.modified = True
-        return jsonify({'success': True, 'enabled': session[SK_LAYER1_LAST_BEST_CONTEXT_ENABLED]})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @api_bp.route('/set_grade_vs_prompt_mode', methods=['POST'])
+@login_required
 def set_grade_vs_prompt_mode():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
     try:
         data = request.get_json() or {}
         mode = str(data.get('mode', 'current')).strip().lower()
@@ -514,18 +430,16 @@ def get_backup_data():
 
 
 @api_bp.route('/grader_settings', methods=['GET'])
+@login_required
 def get_grader_settings_list():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
     names = list_grader_settings()
     current = get_grader_setting_name()
     return jsonify({'success': True, 'settings': names, 'current': current})
 
 
 @api_bp.route('/grader_setting/<name>', methods=['GET'])
+@login_required
 def get_grader_setting(name):
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
     entries = load_grader_setting(name)
     if entries is None:
         return jsonify({'success': False, 'error': 'Setting not found'}), 404
@@ -533,9 +447,8 @@ def get_grader_setting(name):
 
 
 @api_bp.route('/save_grader_setting', methods=['POST'])
+@login_required
 def save_grader_setting_route():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
     try:
         data = request.get_json()
         name = data.get('name', '').strip().lower()
@@ -566,9 +479,8 @@ def save_grader_setting_route():
 
 
 @api_bp.route('/set_grader_setting', methods=['POST'])
+@login_required
 def set_grader_setting_route():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
     try:
         data = request.get_json()
         name = data.get('name', 'default').strip().lower()
@@ -584,9 +496,8 @@ def set_grader_setting_route():
 
 
 @api_bp.route('/get_grader_config', methods=['GET'])
+@login_required
 def get_active_grader_config_route():
-    if not check_auth():
-        return jsonify({'error': 'Not authenticated'}), 401
     name = get_grader_setting_name()
     config = get_grader_config(name)
     return jsonify({'success': True, 'name': name, 'config': config})

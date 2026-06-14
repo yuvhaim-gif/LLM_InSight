@@ -11,6 +11,7 @@ from flask import Flask
 from config import FLASK_SECRET, PORT, SSL_CERT_PATH, SSL_KEY_PATH, BACKUP_DIR, DATA_DIR
 from config import LEDGER_FILE, BESTBEST_CACHE, ITERATION_HISTORY_FILE, CONSOLE_OUTPUT_FILE
 from utils.file_io import backup_file, backup_chat_json, clear_file
+from utils.csrf import init_csrf
 from core.db import init_db, cleanup_old_sessions
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -18,13 +19,22 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 app = Flask(__name__, template_folder='templates', static_folder='static', static_url_path='/static')
 app.secret_key = FLASK_SECRET
 
+_SSL_CONFIGURED = bool(
+    SSL_CERT_PATH and SSL_KEY_PATH
+    and os.path.exists(SSL_CERT_PATH) and os.path.exists(SSL_KEY_PATH)
+)
+
 app.config.update(
     MAX_CONTENT_LENGTH=16 * 1024 * 1024,
     SEND_FILE_MAX_AGE_DEFAULT=0,
     SESSION_COOKIE_SAMESITE='Lax',
-    SESSION_COOKIE_SECURE=False,
-    PERMANENT_SESSION_LIFETIME=86400
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=_SSL_CONFIGURED,
+    PERMANENT_SESSION_LIFETIME=86400,
+    CSRF_ENABLED=True
 )
+
+init_csrf(app)
 
 
 def startup_cleanup():

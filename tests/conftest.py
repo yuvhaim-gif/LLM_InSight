@@ -109,6 +109,7 @@ def app(tmp_path, monkeypatch):
 
     _flask_app.config["TESTING"] = True
     _flask_app.config["SECRET_KEY"] = "test-secret"
+    _flask_app.config["CSRF_ENABLED"] = False
 
     db_mod.init_db()
 

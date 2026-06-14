@@ -318,7 +318,7 @@ pip install -r requirements-dev.txt
 pytest tests/ -v --tb=short
 ```
 
-The 184 contract tests (102 core + 82 Preference Studio) validate backup schema, restore behavior, advanced model map compatibility, auth matrix, provider routing, and the full Preference Studio package (`test_pref_*`: store, extraction, active-learning queue, calibration, dataset pools/examples, export, routes, sources, user-pref, and wiring). Tests use monkeypatched temp directories and an isolated SQLite database — no production files are touched, no AI models are called, and no `.env` file is required.
+The 217 contract tests (135 core + 82 Preference Studio) validate backup schema, restore behavior, advanced model map compatibility, auth matrix, provider routing, route-refactor parity, CSRF protection, and the full Preference Studio package (`test_pref_*`: store, extraction, active-learning queue, calibration, dataset pools/examples, export, routes, sources, user-pref, and wiring). Tests use monkeypatched temp directories and an isolated SQLite database — no production files are touched, no AI models are called, and no `.env` file is required.
 
 ---
 
@@ -339,6 +339,14 @@ LangSmith/LangChain tracing is available on the orchestrating iterative loop and
 
 ---
 
+## Security
+
+- **Authentication** — every page and mutating API requires a logged-in session (`APP_USER` / `APP_PASS`); unauthenticated requests are redirected to `/login` (pages) or rejected with JSON `401` (APIs).
+- **CSRF protection** — all mutating requests (`POST`/`PUT`/`PATCH`/`DELETE`) are validated against a per-session token (`utils/csrf.py`). HTML forms carry a hidden `csrf_token` field; JavaScript `fetch` calls send an `X-CSRFToken` header injected by a single global wrapper (`static/js/shared/csrf.js`). Safe methods and the no-op `/shutdown-notify` are exempt. Controlled by the `CSRF_ENABLED` config flag (on by default; disabled in tests).
+- **Session cookies** — `HttpOnly` and `SameSite=Lax` are always set; `Secure` is enabled automatically when the server is started with a valid SSL certificate/key.
+
+---
+
 ## Project Structure
 
 | Path | Purpose |
@@ -351,7 +359,7 @@ LangSmith/LangChain tracing is available on the orchestrating iterative loop and
 | `routes/` | `web_routes.py`, `api_routes.py`, `review_routes.py` |
 | `preference/` | Isolated Preference Studio package: `store.py`, `extract.py`, `active_learning.py`, `calibrate.py`, `conflicts.py`, `dataset.py`, `export.py`, `routes.py` |
 | `ai/` | `iterative_loop.py`, `iteration_summary.py`, `layer0.py`, `layer1.py`, `layer2.py`, `layer3.py`, `api_calls.py` |
-| `utils/` | `session.py`, `session_keys.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py` |
+| `utils/` | `session.py`, `session_keys.py`, `file_io.py`, `common.py`, `text_processing.py`, `validation.py`, `grader_settings.py`, `csrf.py` |
 | `scripts/` | Developer utility scripts (`check_syntax.py`, `check_modified.py`, `create_graderdata.py`) |
 | `templates/` | Jinja2 templates (login, main, review, config_graders, studio) with shared partials |
 | `static/` | CSS, JavaScript, and assets (incl. `js/studio/`, `js/arena/`, `js/dataset/`, `js/calibrate/`) |

@@ -84,6 +84,7 @@
     <div class="main-layout">
         <div class="main-content">
             <form method="post" id="analysisForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="controls">
                     <div style="display: flex; gap: 40px; justify-content: center; align-items: center; flex-wrap: wrap;">
                         <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
@@ -181,6 +182,7 @@
             </form>
 
             <form id="clear-form" method="post" action="{{ url_for('api.clear_chat') }}" style="display:none">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             </form>
 
             <!-- Show ALL best-best answers in reverse order (newest first) -->
