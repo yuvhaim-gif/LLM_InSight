@@ -188,11 +188,11 @@ The flow:
    Uncertain rows can be sent back to the Judge tab with **Send REVIEW → Judge**.
 
 **Conflicts Report** — Each source row has a **⚠️ Report** button. It opens a per-chat report
-listing only the pairs where your decisive pick disagrees with the grader's, with the chat's
-pairwise accuracy and Cohen's κ; each row marks **⭐ your pick** and **🤖 the grader's pick**. If a
-chat was re-graded, a version selector lets you compare the **Original** grading against later
-**runs** (newest auto-selected), and your choice is saved per chat. It never changes your stored
-votes.
+listing all your decisive judgments against the grader's picks — filterable by **All / Conflicts /
+Ties / Agreements** (conflicts surfaced first) — with the chat's pairwise accuracy and Cohen's κ;
+each row marks **⭐ your pick** and **🤖 the grader's pick**. If a chat was re-graded, a version
+selector lets you compare the **Original** grading against later **runs** (newest auto-selected),
+and your choice is saved per chat. It never changes your stored votes.
 
 Repeat until the grader matches your judgment well enough for your goal. Everything you do here is
 saved separately from your normal runs, so it never disturbs the live session or your backups.

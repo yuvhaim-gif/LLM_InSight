@@ -24,9 +24,9 @@ Build & Export tab respectively.
    most-uncertain pairs, and judge them: which answer is better, a tie, or both bad. Optionally
    give each side your own 1–100 grade, pin a judgment as ground truth, or open **Refine** to
    write a gold answer and blacklist both shown answers.
-3. **Calibration panel** (on `/config_graders`) — see, live, how well the current grader config
-   reproduces your judgments: pairwise accuracy, Cohen's κ, Spearman, and per-attribute
-   alignment. **Re-fit weights** (instant, no model calls) or **Full re-grade** (re-runs the
+3. **Calibration panel** (on `/config_graders`) — see how well the saved grader config
+   reproduces your judgments (metrics refresh once you save): pairwise accuracy, Cohen's κ,
+   Spearman, and per-attribute alignment. **Re-fit weights** (instant, no model calls) or **Full re-grade** (re-runs the
    Layer 3 graders with a candidate config) and **Apply** the suggestion into the page's weight
    inputs, then **Save**.
 4. **Build & Export tab** — assemble curated pools from exactly the sources you tick, inspect them
@@ -91,8 +91,10 @@ The panel reads and writes the page's existing weight inputs — it never duplic
   spinner + status line.
 - **History** — compare past calibration runs by accuracy/κ and pick the best fit for your aim.
 
-Metrics update live as you edit weights (no model calls); the full re-grade is the only
-model-intensive action.
+The panel's metrics (pairwise accuracy, κ, Spearman, per-attribute) are computed from the **saved**
+grader config — `GET /api/calibrate/report` reads the active setting's weights, not the unsaved
+inputs — so they refresh once you **Save** a change. **Re-fit weights** suggests a better-fitting
+weight set instantly with no model calls; the **full re-grade** is the only model-intensive action.
 
 ### 2.3 Build & Export tab
 
@@ -129,9 +131,13 @@ is available for any chat you have judged, and you can reopen it at any time.
 
 - **Summary line** — number of conflicts out of decisive judgments, the pairwise accuracy, and
   Cohen's κ for the chat under the selected grading version.
-- **Conflict rows** — only the pairs where your pick differs from the grader's. Each row shows the
-  prompt, both answers (text, model, overall, per-attribute grades), and badges marking **⭐ your
-  pick** and **🤖 the grader's pick**; an *Agreement* / *Conflict* banner summarises the row.
+- **Rows** — every decisive judgment for the chat, not just the conflicts. A filter bar
+  (**All / Conflicts / Ties / Agreements**, each with a count, backed by the summary's
+  `n_contradict` / `n_tie` / `n_agree`) switches the view; the default **All** view groups rows
+  under section headers with conflicts surfaced first (sort order: contradict → tie → agree, then
+  by descending margin). Each row shows the prompt, both answers (text, model, overall,
+  per-attribute grades), and badges marking **⭐ your pick** and **🤖 the grader's pick**; an
+  *Agreement* / *Conflict* banner summarises the row.
 - **Grading-version selector** — when a chat has been re-graded (e.g. via a Tier-B full re-grade),
   the report lets you switch between the **Original** grading and each later **run** (Run 1, Run 2,
   …). The newest run is labelled *(last)* and is auto-selected on first open; conflicts, accuracy,
@@ -139,14 +145,14 @@ is available for any chat you have judged, and you can reopen it at any time.
 - **Persisted selection** — the version you choose is **saved per chat** (keyed by the chat's
   answer content, so it survives re-scans) and reused the next time you open the report. Only you
   can change it; it never alters the stored votes or the chat's grades.
-- **No conflicts** — if the grader agrees with all your decisive judgments for the chat, the report
-  shows a clear *no conflicts* state.
+- **Empty states** — if you have not judged any pairs for the chat yet, the report says so; and if a
+  filter (e.g. **Conflicts**) has no matching rows, it shows a clear empty message for that filter.
 
 Backing endpoints (all under `pref_bp`, auth-guarded):
 
 | Method | Path | Description |
 |---|---|---|
-| `GET /api/arena/source/conflicts` | Conflict rows + summary for a source under the active grading version, plus the list of available versions |
+| `GET /api/arena/source/conflicts` | Decisive-judgment rows (all statuses) + summary for a source under the active grading version, plus the list of available versions |
 | `POST /api/arena/source/grading_selection` | Persist the chosen grading version for that chat (validated against the available versions) |
 | `GET /api/arena/judgments` | Per-pair user-pick vs grader-pick map across all judged chats (for cross-page conflict indicators) |
 

@@ -114,7 +114,7 @@ Pages redirect to `/login` when unauthenticated; every `/api/...` endpoint retur
 | `POST /api/arena/vote` | Record a verdict (+ optional scalar grades), return the next pair |
 | `POST /api/arena/refine` | Save a gold answer; optionally blacklist both shown answers |
 | `POST /api/arena/role` | Set a pair's role (e.g. pin/unpin ground truth) |
-| `GET /api/arena/source/conflicts` | Conflicts Report for a chat: conflict rows + summary under the active grading version, plus available versions |
+| `GET /api/arena/source/conflicts` | Conflicts Report for a chat: all decisive-judgment rows (conflict/tie/agree) + summary under the active grading version, plus available versions |
 | `POST /api/arena/source/grading_selection` | Persist the chosen grading version for a chat (per-user, per-chat) |
 | `GET /api/arena/judgments` | Per-pair user-pick vs grader-pick map across judged chats (cross-page conflict indicators) |
 | `GET /api/calibrate/report` | Live fitness report (pairwise acc, Cohen's κ, Spearman, per-attribute) |
@@ -294,7 +294,7 @@ for their meanings and the export-format contracts.
 
 | Package | Purpose |
 |---|---|
-| `pytest` | Contract test suite (184 tests: 102 core — backup schema, restore, advanced maps, auth matrix, provider routing — plus 82 Preference Studio tests via `test_pref_*`) |
+| `pytest` | Contract test suite (217 tests: 135 core — backup schema, restore, advanced maps, auth matrix, provider routing, route-refactor parity, CSRF — plus 82 Preference Studio tests via `test_pref_*`) |
 
 ### Grader Settings (`graderdata/*.jsonl`)
 

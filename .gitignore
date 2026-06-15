@@ -29,7 +29,6 @@ backup/*
 .zenflow/
 .pytest_cache/
 .vscode/
-AGENTS.md
 *.swp
 *.swo
 *~

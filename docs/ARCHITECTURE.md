@@ -19,7 +19,7 @@ How the tool is structured — components, data flow, and persistence. It enable
 | Layer 0 | `ai/layer0.py` | Brainstorming ideas (optional, runs once before loop) |
 | Layer 1 | `ai/layer1.py` | Answer generation (two variants: original + improved) |
 | Layer 2 | `ai/layer2.py` | Prompt rewriting using grader feedback, weights, and context |
-| Layer 3 | `ai/layer3.py` | Parallel multi-category grading with retries (1-8 configurable categories) |
+| Layer 3 | `ai/layer3.py` | Multi-category grading with retries (1-8 configurable categories); categories grouped by grader model, groups run concurrently via `ThreadPoolExecutor` while same-model categories run sequentially within a group |
 | Provider routing | `ai/api_calls.py` | Routes calls to Ollama, Mistral, Gemini, or GLM-4. Post-thread result handling consolidated in `_handle_thread_result` helper (used by Gemini, Mistral, GLM; Ollama preserves its timeout-specific print). When Ollama is not installed/importable, returns `[OLLAMA_ERROR]` prefix so the error is correctly detected by `is_error_response()` and Layer 3 grading is skipped |
 | Data models | `core/models.py` | Pydantic: `Layer2Response`, `Layer2Critique` |
 | Session helpers | `utils/session.py` | Session accessors, advanced mode detection, model selection tracking. Verbose accessor logs use `logging.debug` (not console print). `get_layer3_grader_models()` falls back to session-stored graders when the named grader setting file is missing on disk (e.g., after restoring a backup from another machine). Uses centralized key constants from `utils/session_keys.py` |
